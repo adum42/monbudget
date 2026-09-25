@@ -465,8 +465,10 @@ function updateCatSelect() { updateCatSelects(); }
 
 function changeMonth(dir) {
   const [y, m] = currentMonth.split('-').map(Number);
-  const d = new Date(y, m - 1 + dir);
-  currentMonth = d.toISOString().slice(0, 7);
+  const d = new Date(y, m - 1 + dir, 1);
+  const newY = d.getFullYear();
+  const newM = String(d.getMonth() + 1).padStart(2, '0');
+  currentMonth = `${newY}-${newM}`;
   renderAll();
 }
 
