@@ -176,9 +176,9 @@ main { flex: 1; padding: 24px; max-width: 900px; width: 100%; margin: 0 auto; }
   </nav>
   <main>
     <div class="month-nav">
-      <button onclick="changeMonth(-1)">←</button>
+      <button id="btn-prev-month">←</button>
       <div class="month-label" id="month-label"></div>
-      <button onclick="changeMonth(1)">→</button>
+      <button id="btn-next-month">→</button>
     </div>
     <div class="metrics" id="metrics"></div>
 
@@ -462,6 +462,11 @@ function updateCatSelects() {
 }
 
 function updateCatSelect() { updateCatSelects(); }
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('btn-prev-month').addEventListener('click', function() { changeMonth(-1); });
+  document.getElementById('btn-next-month').addEventListener('click', function() { changeMonth(1); });
+});
 
 function changeMonth(dir) {
   const [y, m] = currentMonth.split('-').map(Number);
