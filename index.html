@@ -100,12 +100,22 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 
 /* CATEGORIES */
-.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
 .cat-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);}
-.cat-left{display:flex;align-items:center;gap:10px;}
-.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.cat-name{font-size:13px;font-weight:500;}
-.cat-type{font-size:11px;color:var(--muted);}
+.cat-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.cat-emoji{font-size:22px;flex-shrink:0;line-height:1;}
+.cat-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cat-actions{display:flex;gap:4px;flex-shrink:0;}
+.btn-edit{padding:4px 8px;background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:11px;transition:all .15s;}
+.btn-edit:hover{border-color:var(--accent);color:var(--accent);}
+.cat-edit-form{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.cat-edit-form.open{display:flex;flex-direction:column;gap:8px;}
+.cat-edit-row{display:flex;gap:8px;}
+.cat-edit-row input{flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;}
+.cat-edit-row input:focus{border-color:var(--accent);}
+.emoji-picker{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;}
+.emoji-btn{font-size:18px;padding:4px 6px;border:1px solid transparent;border-radius:6px;cursor:pointer;background:transparent;transition:all .1s;}
+.emoji-btn:hover,.emoji-btn.selected{background:var(--accent-soft);border-color:var(--accent);}
 
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -260,20 +270,13 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
     <div class="section" id="tab-categories">
       <div class="card">
         <div class="card-title">Nouvelle catégorie</div>
-        <div class="form-grid">
-          <div class="form-group"><label>Nom</label><input type="text" id="cat-name" placeholder="ex: Alimentation, Salaire..."></div>
-          <div class="form-group"><label>Type</label>
-            <select id="cat-type">
-              <option value="sortie">Sortie</option>
-              <option value="entrée">Entrée</option>
-              <option value="les deux">Les deux</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Couleur</label><input type="color" id="cat-color" value="#5B6EF5" style="height:38px;padding:4px;"></div>
-          <div class="form-group" style="justify-content:flex-end;padding-top:18px">
-            <button class="btn-add" onclick="addCategory()">Ajouter</button>
-          </div>
+        <div class="form-group" style="margin-bottom:12px"><label>Nom</label><input type="text" id="cat-name" placeholder="ex: Alimentation, Salaire..."></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Émoji</label>
+          <div class="emoji-picker" id="emoji-picker-new"></div>
+          <input type="text" id="cat-emoji" placeholder="Ou tape ton émoji ici 🎯" maxlength="2" style="margin-top:6px;">
         </div>
+        <button class="btn-add" onclick="addCategory()">Ajouter</button>
       </div>
       <div class="card">
         <div class="card-title">Mes catégories</div>
@@ -363,7 +366,7 @@ async function loadCategories() {
   renderCategories(); updateCatSelects();
 }
 async function loadTransactions() {
-  const {data} = await sb.from('transactions').select('*, categories(nom,couleur)').order('date',{ascending:false});
+  const {data} = await sb.from('transactions').select('*, categories(nom,emoji)').order('date',{ascending:false});
   transactions = data||[];
 }
 async function loadComptes() {
@@ -394,17 +397,53 @@ async function deleteTransaction(id) {
 }
 
 // ── CATEGORIES ────────────────────────────────────────
+const EMOJIS_DEFAUT = ['🛒','🏠','🚗','💊','🎮','👕','💰','✈️','🍽️','📱','⚡','🎓','🐾','💪','🎁','📚','🔧','🎵','🏋️','💼'];
+let selectedEmoji = '📁';
+
+function initEmojiPicker(containerId, inputId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = EMOJIS_DEFAUT.map(e =>
+    `<button type="button" class="emoji-btn ${e===selectedEmoji?'selected':''}" onclick="selectEmoji('${e}','${containerId}','${inputId}')">${e}</button>`
+  ).join('');
+}
+
+function selectEmoji(emoji, containerId, inputId) {
+  selectedEmoji = emoji;
+  document.getElementById(inputId).value = emoji;
+  document.querySelectorAll(`#${containerId} .emoji-btn`).forEach(b => b.classList.toggle('selected', b.textContent===emoji));
+}
+
 async function addCategory() {
   const nom = document.getElementById('cat-name').value.trim();
-  const type = document.getElementById('cat-type').value;
-  const couleur = document.getElementById('cat-color').value;
+  const emoji = document.getElementById('cat-emoji').value.trim() || selectedEmoji || '📁';
   if (!nom) return;
-  const {error} = await sb.from('categories').insert([{user_id:currentUser.id, nom, type, couleur}]);
-  if (!error) { document.getElementById('cat-name').value=''; await loadCategories(); }
+  const {error} = await sb.from('categories').insert([{user_id:currentUser.id, nom, type:'les deux', emoji}]);
+  if (!error) {
+    document.getElementById('cat-name').value='';
+    document.getElementById('cat-emoji').value='';
+    selectedEmoji = '📁';
+    initEmojiPicker('emoji-picker-new','cat-emoji');
+    await loadCategories();
+  }
 }
+
 async function deleteCategory(id) {
   await sb.from('categories').delete().eq('id',id);
   await loadCategories();
+}
+
+async function updateCategory(id) {
+  const nom = document.getElementById(`edit-nom-${id}`).value.trim();
+  const emoji = document.getElementById(`edit-emoji-${id}`).value.trim() || '📁';
+  if (!nom) return;
+  await sb.from('categories').update({nom, emoji}).eq('id',id);
+  await loadCategories();
+}
+
+function toggleEditCat(id) {
+  const form = document.getElementById(`edit-form-${id}`);
+  form.classList.toggle('open');
 }
 
 // ── COMPTES ───────────────────────────────────────────
@@ -481,7 +520,7 @@ function renderTransactions() {
     <div class="tx-item">
       <div class="tx-left">
         <span class="tx-name">${t.description}</span>
-        <span class="tx-meta">${t.date}${t.categories?' · '+t.categories.nom:''}</span>
+        <span class="tx-meta">${t.date}${t.categories?' · '+(t.categories.emoji||'📁')+' '+t.categories.nom:''}</span>
       </div>
       <div class="tx-right">
         <span class="tx-amount ${t.type==='entrée'?'green':'red'}">${t.type==='entrée'?'+':'-'}${fmt(t.montant)} €</span>
@@ -494,15 +533,40 @@ function renderTransactions() {
 function renderCategories() {
   const list = document.getElementById('cat-list');
   if (!categories.length) { list.innerHTML='<div class="empty">Aucune catégorie — ajoutes-en une !</div>'; return; }
-  const typeLabel={'entrée':'Entrée','sortie':'Sortie','les deux':'Entrée & Sortie'};
   list.innerHTML=`<div class="cat-grid">${categories.map(c=>`
-    <div class="cat-item">
-      <div class="cat-left">
-        <div class="cat-dot" style="background:${c.couleur}"></div>
-        <div><div class="cat-name">${c.nom}</div><div class="cat-type">${typeLabel[c.type]||c.type}</div></div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);padding:12px 14px;">
+      <div class="cat-item" style="padding:0;border:none;background:transparent;">
+        <div class="cat-left">
+          <span class="cat-emoji">${c.emoji||'📁'}</span>
+          <span class="cat-name">${c.nom}</span>
+        </div>
+        <div class="cat-actions">
+          <button class="btn-edit" onclick="toggleEditCat('${c.id}')">✏️</button>
+          <button class="btn-del" onclick="deleteCategory('${c.id}')">✕</button>
+        </div>
       </div>
-      <button class="btn-del" onclick="deleteCategory('${c.id}')">✕</button>
+      <div class="cat-edit-form" id="edit-form-${c.id}">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Émoji</div>
+        <div class="emoji-picker" id="emoji-picker-${c.id}"></div>
+        <div class="cat-edit-row">
+          <input type="text" id="edit-emoji-${c.id}" value="${c.emoji||'📁'}" maxlength="2" placeholder="Émoji" style="max-width:60px;">
+          <input type="text" id="edit-nom-${c.id}" value="${c.nom}" placeholder="Nom">
+          <button class="btn-add" style="padding:7px 12px;font-size:12px;" onclick="updateCategory('${c.id}')">OK</button>
+        </div>
+      </div>
     </div>`).join('')}</div>`;
+
+  // Init les emoji pickers d'édition
+  categories.forEach(c => {
+    const container = document.getElementById(`emoji-picker-${c.id}`);
+    if (!container) return;
+    container.innerHTML = EMOJIS_DEFAUT.map(e =>
+      `<button type="button" class="emoji-btn ${e===(c.emoji||'📁')?'selected':''}" onclick="(function(){document.getElementById('edit-emoji-${c.id}').value='${e}';document.querySelectorAll('#emoji-picker-${c.id} .emoji-btn').forEach(b=>b.classList.toggle('selected',b.textContent==='${e}'));})()">  ${e}</button>`
+    ).join('');
+  });
+
+  // Init le picker du formulaire d'ajout
+  initEmojiPicker('emoji-picker-new','cat-emoji');
 }
 
 function renderComptes() {
@@ -616,10 +680,8 @@ function renderChartComptes() {
 }
 
 function updateCatSelects() {
-  const type = document.getElementById('tx-type').value;
-  const cats = categories.filter(c=>c.type===type||c.type==='les deux');
-  document.getElementById('tx-cat').innerHTML='<option value="">Sans catégorie</option>'+cats.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
-  document.getElementById('f-cat').innerHTML='<option value="all">Toutes catégories</option>'+categories.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+  document.getElementById('tx-cat').innerHTML='<option value="">Sans catégorie</option>'+categories.map(c=>`<option value="${c.id}">${c.emoji||'📁'} ${c.nom}</option>`).join('');
+  document.getElementById('f-cat').innerHTML='<option value="all">Toutes catégories</option>'+categories.map(c=>`<option value="${c.id}">${c.emoji||'📁'} ${c.nom}</option>`).join('');
 }
 function updateCatSelect() { updateCatSelects(); }
 
@@ -645,12 +707,13 @@ function switchTab(name) {
 function renderCharts() {
   const txs = txOfMonth().filter(t=>t.type==='sortie');
   const catMap={};
+  const CHART_COLORS=['#5B6EF5','#22C97A','#F05252','#F59E0B','#8B5CF6','#EC4899','#14B8A6','#F97316','#06B6D4','#84CC16'];
   txs.forEach(t=>{
-    const key=t.categories?.nom||'Autre'; const color=t.categories?.couleur||'#7A7D8A';
-    if(!catMap[key]) catMap[key]={total:0,color};
+    const key=t.categories?(t.categories.emoji||'📁')+' '+t.categories.nom:'Autre';
+    if(!catMap[key]) catMap[key]={total:0};
     catMap[key].total+=t.montant;
   });
-  const catLabels=Object.keys(catMap), catData=catLabels.map(k=>catMap[k].total), catColors=catLabels.map(k=>catMap[k].color);
+  const catLabels=Object.keys(catMap), catData=catLabels.map(k=>catMap[k].total), catColors=catLabels.map((_,i)=>CHART_COLORS[i%CHART_COLORS.length]);
   if (chartCat) chartCat.destroy();
   chartCat=new Chart(document.getElementById('chart-cat'),{type:'doughnut',data:{labels:catLabels,datasets:[{data:catData,backgroundColor:catColors,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#7A7D8A',font:{size:11},boxWidth:10}}}}});
 
