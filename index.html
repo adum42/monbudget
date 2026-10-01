@@ -212,7 +212,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <button class="modal-close" onclick="closeTxModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="modal-field">
+      <div class="modal-field" id="tx-type-toggle-row" style="display:none">
         <label>Type</label>
         <div class="type-toggle">
           <button class="type-btn active-in" id="btn-type-in" onclick="setTxType('entrée')">+ Entrée</button>
@@ -352,8 +352,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 
     <!-- TRANSACTIONS -->
     <div class="section active" id="tab-transactions">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
-        <button class="btn-add" onclick="openTxModal(null)">+ Nouvelle transaction</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;">
+        <button class="btn-add" style="background:var(--green);" onclick="openTxModal(null,'entrée')">+ Entrée d'argent</button>
+        <button class="btn-add" style="background:var(--red);" onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
       </div>
       <div class="card">
         <div class="card-title">Historique</div>
@@ -462,13 +463,17 @@ function pickEmoji(e){
 let editingTxId=null;
 let currentTxType='entrée';
 
-function openTxModal(tx){
+function openTxModal(tx, defaultType){
   editingTxId=tx?tx.id:null;
-  currentTxType=tx?tx.type:'entrée';
-  document.getElementById('tx-modal-title').textContent=tx?'Modifier la transaction':'Nouvelle transaction';
+  currentTxType=tx?tx.type:(defaultType||'entrée');
+  const isEntree=currentTxType==='entrée';
+  document.getElementById('tx-modal-title').textContent=tx?'Modifier la transaction':(isEntree?'➕ Entrée d\'argent':'➖ Sortie d\'argent');
+  document.getElementById('tx-modal-title').style.color=tx?'var(--text)':(isEntree?'var(--green)':'var(--red)');
   document.getElementById('modal-tx-desc').value=tx?tx.description:'';
   document.getElementById('modal-tx-amount').value=tx?tx.montant:'';
   document.getElementById('modal-tx-date').value=tx?tx.date:new Date().toISOString().split('T')[0];
+  // Afficher le toggle seulement en modification
+  document.getElementById('tx-type-toggle-row').style.display=tx?'flex':'none';
   updateCatSelect();
   if(tx&&tx.categorie_id) setTimeout(()=>document.getElementById('modal-tx-cat').value=tx.categorie_id,50);
   setTxType(currentTxType);
