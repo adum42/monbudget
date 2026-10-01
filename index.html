@@ -842,11 +842,8 @@ function renderTransactions(){
   if(!txs.length){list.innerHTML='<div class="empty">Aucune transaction ce mois</div>';return;}
   list.innerHTML=txs.map(t=>{
     const isMvt=t.type==='mouvement';
-    const isEntree=t.type==='entrée'||( isMvt&&t.direction==='depuis');
+    const isEntree=t.type==='entrée'||(isMvt&&t.direction==='depuis');
     const compte=isMvt?comptes.find(c=>c.id===t.compte_id):null;
-    const clickFn=isMvt
-      ?`openMvtModal(${JSON.stringify({...t,categories:undefined})})`
-      :`openTxModal(${JSON.stringify({...t,categories:undefined})})`;
     const amountColor=isEntree?'green':'red';
     const amountSign=isEntree?'+':'-';
     const badgeClass=isMvt?'badge-mvt':(isEntree?'badge-in':'badge-out');
@@ -854,7 +851,7 @@ function renderTransactions(){
     const meta=isMvt
       ?`${t.date} · ${t.direction==='vers'?'Vers':'Depuis'} ${compte?compte.nom:'compte'}`
       :`${t.date}${t.categories?' · '+(t.categories.emoji||'📁')+' '+t.categories.nom:''}`;
-    return`<div class="tx-item" onclick='${clickFn}' style="cursor:pointer;">
+    return`<div class="tx-item" data-id="${t.id}" data-type="${t.type}" style="cursor:pointer;">
       <div class="tx-left">
         <span class="tx-name">${t.description}</span>
         <span class="tx-meta">${meta}</span>
@@ -865,6 +862,18 @@ function renderTransactions(){
       </div>
     </div>`;
   }).join('');
+
+  // Attacher les événements après rendu
+  document.querySelectorAll('.tx-item').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const id=el.dataset.id;
+      const type=el.dataset.type;
+      const tx=transactions.find(t=>t.id===id);
+      if(!tx) return;
+      if(type==='mouvement') openMvtModal(tx);
+      else openTxModal(tx);
+    });
+  });
 }
 function updateCatSelect(){
   const opts='<option value="">Sans catégorie</option>'+categories.map(c=>`<option value="${c.id}">${c.emoji||'📁'} ${c.nom}</option>`).join('');
