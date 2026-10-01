@@ -85,6 +85,12 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:500;}
 .badge-in{background:var(--green-soft);color:var(--green);}
 .badge-out{background:var(--red-soft);color:var(--red);}
+.badge-mvt{background:rgba(91,110,245,0.15);color:var(--accent);}
+.info-box{background:var(--surface2);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--muted);line-height:1.6;}
+.info-box strong{color:var(--text);}
+.direction-toggle{display:flex;gap:6px;}
+.dir-btn{flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;}
+.dir-btn.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
 .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 
@@ -246,6 +252,49 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
   </div>
 </div>
 
+<!-- MODALE MOUVEMENT DE COMPTE -->
+<div class="modal-overlay" id="mvt-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="mvt-modal-title">🔄 Mouvement de compte</div>
+      <button class="modal-close" onclick="closeMvtModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Direction</label>
+        <div class="direction-toggle">
+          <button class="dir-btn active" id="dir-btn-vers" onclick="setDirection('vers')">📥 Vers le compte</button>
+          <button class="dir-btn" id="dir-btn-depuis" onclick="setDirection('depuis')">📤 Depuis le compte</button>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Compte concerné</label>
+        <select id="modal-mvt-compte"></select>
+      </div>
+      <div class="modal-field">
+        <label>Description</label>
+        <input type="text" id="modal-mvt-desc" placeholder="ex: Virement Livret A, Retrait PEA...">
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label>Montant (€)</label>
+          <input type="number" id="modal-mvt-amount" placeholder="0.00" step="0.01" min="0" oninput="updateMvtPreview()">
+        </div>
+        <div class="modal-field">
+          <label>Date</label>
+          <input type="date" id="modal-mvt-date" oninput="updateMvtPreview()">
+        </div>
+      </div>
+      <div class="info-box" id="mvt-preview" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="mvt-modal-delete" style="display:none" onclick="deleteMvtFromModal()">Supprimer</button>
+      <button class="btn-cancel" onclick="closeMvtModal()">Annuler</button>
+      <button class="btn-confirm" onclick="saveMvt()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALE CATÉGORIE -->
 <div class="modal-overlay" id="cat-modal">
   <div class="modal">
@@ -352,14 +401,15 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 
     <!-- TRANSACTIONS -->
     <div class="section active" id="tab-transactions">
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;flex-wrap:wrap;">
         <button class="btn-add" style="background:var(--green);" onclick="openTxModal(null,'entrée')">+ Entrée d'argent</button>
         <button class="btn-add" style="background:var(--red);" onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
+        <button class="btn-add" style="background:var(--accent);" onclick="openMvtModal(null)">🔄 Mouvement de compte</button>
       </div>
       <div class="card">
         <div class="card-title">Historique</div>
         <div class="tx-filters">
-          <select id="f-type" onchange="renderTransactions()"><option value="all">Tous</option><option value="entrée">Entrées</option><option value="sortie">Sorties</option></select>
+          <select id="f-type" onchange="renderTransactions()"><option value="all">Tous</option><option value="entrée">Entrées</option><option value="sortie">Sorties</option><option value="mouvement">Mouvements</option></select>
           <select id="f-cat" onchange="renderTransactions()"><option value="all">Toutes catégories</option></select>
         </div>
         <div class="tx-list" id="tx-list"><div class="loading">Chargement...</div></div>
@@ -504,6 +554,94 @@ async function deleteTxFromModal(){
   if(!editingTxId) return;
   await sb.from('transactions').delete().eq('id',editingTxId);
   closeTxModal();await loadTransactions();renderAll();
+}
+
+// ── MODAL MOUVEMENT ───────────────────────────────────
+let editingMvtId=null;
+let currentDirection='vers';
+
+function openMvtModal(tx){
+  editingMvtId=tx?tx.id:null;
+  currentDirection=tx?tx.direction||'vers':'vers';
+  document.getElementById('mvt-modal-title').textContent=tx?'🔄 Modifier le mouvement':'🔄 Mouvement de compte';
+  document.getElementById('modal-mvt-desc').value=tx?tx.description:'';
+  document.getElementById('modal-mvt-amount').value=tx?tx.montant:'';
+  document.getElementById('modal-mvt-date').value=tx?tx.date:new Date().toISOString().split('T')[0];
+  document.getElementById('mvt-modal-delete').style.display=tx?'block':'none';
+  // Remplir le select des comptes
+  const sel=document.getElementById('modal-mvt-compte');
+  sel.innerHTML=comptes.map(c=>`<option value="${c.id}">${c.nom} (${c.banque||'—'})</option>`).join('');
+  if(tx&&tx.compte_id) sel.value=tx.compte_id;
+  setDirection(currentDirection);
+  document.getElementById('mvt-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-mvt-desc').focus(),100);
+}
+function closeMvtModal(){document.getElementById('mvt-modal').classList.remove('open');editingMvtId=null;}
+
+function setDirection(dir){
+  currentDirection=dir;
+  document.getElementById('dir-btn-vers').classList.toggle('active',dir==='vers');
+  document.getElementById('dir-btn-depuis').classList.toggle('active',dir==='depuis');
+  updateMvtPreview();
+}
+
+function updateMvtPreview(){
+  const amount=parseFloat(document.getElementById('modal-mvt-amount').value);
+  const date=document.getElementById('modal-mvt-date').value;
+  const compteId=document.getElementById('modal-mvt-compte').value;
+  const compte=comptes.find(c=>c.id===compteId);
+  const preview=document.getElementById('mvt-preview');
+  if(!amount||!compteId||!compte){preview.style.display='none';return;}
+  const lastSolde=getLastSolde(compteId);
+  const dernierMontant=lastSolde?lastSolde.montant:null;
+  const nouveauSolde=dernierMontant!==null?(currentDirection==='vers'?dernierMontant+amount:dernierMontant-amount):null;
+  const signeTx=currentDirection==='vers'?'−':'＋';
+  const couleurTx=currentDirection==='vers'?'var(--red)':'var(--green)';
+  preview.style.display='block';
+  preview.innerHTML=`
+    <strong>Récapitulatif du mouvement :</strong><br>
+    <span style="color:${couleurTx}">${signeTx} ${fmt(amount)} €</span> dans tes transactions du mois<br>
+    ${dernierMontant!==null
+      ?`Solde <strong>${compte.nom}</strong> : ${fmt(dernierMontant)} € → <strong style="color:${nouveauSolde>=0?'var(--green)':'var(--red)'};">${fmt(nouveauSolde)} €</strong>`
+      :`Aucun solde connu pour <strong>${compte.nom}</strong> — le montant saisi sera enregistré comme premier solde`
+    }
+    ${date?`<br>Daté au <strong>${date}</strong>`:''}
+  `;
+}
+
+async function saveMvt(){
+  const desc=document.getElementById('modal-mvt-desc').value.trim();
+  const amount=parseFloat(document.getElementById('modal-mvt-amount').value);
+  const date=document.getElementById('modal-mvt-date').value;
+  const compteId=document.getElementById('modal-mvt-compte').value;
+  if(!desc||!amount||!date||!compteId) return;
+
+  // Type de transaction : vers = sortie budget, depuis = entrée budget
+  const typeTx=currentDirection==='vers'?'sortie':'entrée';
+
+  // 1. Enregistrer la transaction
+  if(editingMvtId){
+    await sb.from('transactions').update({description:desc,montant:amount,type:typeTx,direction:currentDirection,compte_id:compteId,date,categorie_id:null}).eq('id',editingMvtId);
+  } else {
+    await sb.from('transactions').insert([{user_id:currentUser.id,description:desc,montant:amount,type:'mouvement',direction:currentDirection,compte_id:compteId,date,categorie_id:null}]);
+  }
+
+  // 2. Calculer et enregistrer le nouveau solde du compte
+  const lastSolde=getLastSolde(compteId);
+  const base=lastSolde?lastSolde.montant:0;
+  const nouveauSolde=currentDirection==='vers'?base+amount:base-amount;
+  await sb.from('soldes').upsert([{user_id:currentUser.id,compte_id:compteId,date,montant:nouveauSolde,note:desc}],{onConflict:'compte_id,date'});
+
+  closeMvtModal();
+  await Promise.all([loadTransactions(),loadComptes()]);
+  renderAll();
+  if(document.getElementById('tab-comptes').classList.contains('active')){renderComptes();renderChartComptes();}
+}
+
+async function deleteMvtFromModal(){
+  if(!editingMvtId) return;
+  await sb.from('transactions').delete().eq('id',editingMvtId);
+  closeMvtModal();await loadTransactions();renderAll();
 }
 
 // ── MODAL CAT ─────────────────────────────────────────
@@ -702,17 +840,31 @@ function renderTransactions(){
   if(catF!=='all') txs=txs.filter(t=>t.categorie_id===catF);
   const list=document.getElementById('tx-list');
   if(!txs.length){list.innerHTML='<div class="empty">Aucune transaction ce mois</div>';return;}
-  list.innerHTML=txs.map(t=>`
-    <div class="tx-item" onclick='openTxModal(${JSON.stringify({...t,categories:undefined})})' style="cursor:pointer;">
+  list.innerHTML=txs.map(t=>{
+    const isMvt=t.type==='mouvement';
+    const isEntree=t.type==='entrée'||( isMvt&&t.direction==='depuis');
+    const compte=isMvt?comptes.find(c=>c.id===t.compte_id):null;
+    const clickFn=isMvt
+      ?`openMvtModal(${JSON.stringify({...t,categories:undefined})})`
+      :`openTxModal(${JSON.stringify({...t,categories:undefined})})`;
+    const amountColor=isEntree?'green':'red';
+    const amountSign=isEntree?'+':'-';
+    const badgeClass=isMvt?'badge-mvt':(isEntree?'badge-in':'badge-out');
+    const badgeLabel=isMvt?`🔄 ${t.direction==='vers'?'→':'←'} ${compte?compte.nom:'Compte'}`:(isEntree?'Entrée':'Sortie');
+    const meta=isMvt
+      ?`${t.date} · ${t.direction==='vers'?'Vers':'Depuis'} ${compte?compte.nom:'compte'}`
+      :`${t.date}${t.categories?' · '+(t.categories.emoji||'📁')+' '+t.categories.nom:''}`;
+    return`<div class="tx-item" onclick='${clickFn}' style="cursor:pointer;">
       <div class="tx-left">
         <span class="tx-name">${t.description}</span>
-        <span class="tx-meta">${t.date}${t.categories?' · '+(t.categories.emoji||'📁')+' '+t.categories.nom:''}</span>
+        <span class="tx-meta">${meta}</span>
       </div>
       <div class="tx-right">
-        <span class="tx-amount ${t.type==='entrée'?'green':'red'}">${t.type==='entrée'?'+':'-'}${fmt(t.montant)} €</span>
-        <span class="badge ${t.type==='entrée'?'badge-in':'badge-out'}">${t.type==='entrée'?'Entrée':'Sortie'}</span>
+        <span class="tx-amount ${amountColor}">${amountSign}${fmt(t.montant)} €</span>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 function updateCatSelect(){
   const opts='<option value="">Sans catégorie</option>'+categories.map(c=>`<option value="${c.id}">${c.emoji||'📁'} ${c.nom}</option>`).join('');
@@ -852,9 +1004,10 @@ function renderCharts(){
 }
 
 // Fermer modales au clic extérieur
-['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
+['tx-modal','mvt-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this) this.classList.remove('open');});
 });
+document.getElementById('modal-mvt-compte').addEventListener('change',updateMvtPreview);
 
 document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('btn-prev-month').addEventListener('click',function(){changeMonth(-1);});
