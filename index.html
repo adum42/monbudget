@@ -616,21 +616,43 @@ async function saveMvt(){
   const compteId=document.getElementById('modal-mvt-compte').value;
   if(!desc||!amount||!date||!compteId) return;
 
-  // Type de transaction : vers = sortie budget, depuis = entrée budget
-  const typeTx=currentDirection==='vers'?'sortie':'entrée';
-
-  // 1. Enregistrer la transaction
   if(editingMvtId){
-    await sb.from('transactions').update({description:desc,montant:amount,type:typeTx,direction:currentDirection,compte_id:compteId,date,categorie_id:null}).eq('id',editingMvtId);
+    // Récupérer l'ancienne transaction pour retrouver l'ancienne date et l'ancien compte
+    const oldTx=transactions.find(t=>t.id===editingMvtId);
+
+    // Supprimer l'ancien solde horodaté lié à ce mouvement (même date + même compte)
+    if(oldTx){
+      await sb.from('soldes')
+        .delete()
+        .eq('compte_id', oldTx.compte_id||compteId)
+        .eq('date', oldTx.date);
+    }
+
+    // Mettre à jour la transaction en gardant type='mouvement'
+    await sb.from('transactions').update({
+      description:desc, montant:amount, type:'mouvement',
+      direction:currentDirection, compte_id:compteId, date, categorie_id:null
+    }).eq('id',editingMvtId);
+
   } else {
-    await sb.from('transactions').insert([{user_id:currentUser.id,description:desc,montant:amount,type:'mouvement',direction:currentDirection,compte_id:compteId,date,categorie_id:null}]);
+    // Nouvelle transaction
+    await sb.from('transactions').insert([{
+      user_id:currentUser.id, description:desc, montant:amount,
+      type:'mouvement', direction:currentDirection, compte_id:compteId, date, categorie_id:null
+    }]);
   }
 
-  // 2. Calculer et enregistrer le nouveau solde du compte
-  const lastSolde=getLastSolde(compteId);
-  const base=lastSolde?lastSolde.montant:0;
+  // Recharger les soldes pour avoir l'état à jour avant de calculer
+  await loadComptes();
+
+  // Calculer le nouveau solde : on exclut l'éventuel solde existant à cette date
+  const soldeSansDate=soldes.filter(s=>s.compte_id===compteId&&s.date<date).sort((a,b)=>b.date.localeCompare(a.date));
+  const base=soldeSansDate.length?soldeSansDate[0].montant:0;
   const nouveauSolde=currentDirection==='vers'?base+amount:base-amount;
-  await sb.from('soldes').upsert([{user_id:currentUser.id,compte_id:compteId,date,montant:nouveauSolde,note:desc}],{onConflict:'compte_id,date'});
+
+  await sb.from('soldes').upsert([{
+    user_id:currentUser.id, compte_id:compteId, date, montant:nouveauSolde, note:desc
+  }],{onConflict:'compte_id,date'});
 
   closeMvtModal();
   await Promise.all([loadTransactions(),loadComptes()]);
@@ -640,8 +662,20 @@ async function saveMvt(){
 
 async function deleteMvtFromModal(){
   if(!editingMvtId) return;
+  const oldTx=transactions.find(t=>t.id===editingMvtId);
+
+  // Supprimer la transaction
   await sb.from('transactions').delete().eq('id',editingMvtId);
-  closeMvtModal();await loadTransactions();renderAll();
+
+  // Supprimer le solde horodaté associé
+  if(oldTx&&oldTx.compte_id&&oldTx.date){
+    await sb.from('soldes').delete().eq('compte_id',oldTx.compte_id).eq('date',oldTx.date);
+  }
+
+  closeMvtModal();
+  await Promise.all([loadTransactions(),loadComptes()]);
+  renderAll();
+  if(document.getElementById('tab-comptes').classList.contains('active')){renderComptes();renderChartComptes();}
 }
 
 // ── MODAL CAT ─────────────────────────────────────────
