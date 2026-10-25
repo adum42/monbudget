@@ -95,6 +95,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .btn-tricount-validate{padding:4px 10px;border-radius:var(--radius-sm);border:1px solid #F59E0B;background:rgba(245,158,11,0.1);color:#F59E0B;cursor:pointer;font-size:11px;font-weight:500;white-space:nowrap;transition:all .15s;}
 .btn-tricount-validate:hover{background:rgba(245,158,11,0.25);}
 .btn-tricount-done{padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--green);background:var(--green-soft);color:var(--green);font-size:11px;font-weight:500;white-space:nowrap;cursor:default;}
+.btn-tricount-non{padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--red);background:var(--red-soft);color:var(--red);font-size:11px;font-weight:500;white-space:nowrap;cursor:default;}
 .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 
@@ -739,7 +740,7 @@ function renderTransactions(){
       ?`<button class="btn-tricount-validate" data-tc-id="${t.id}">Valider Tricount</button>`
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
-      :'';
+      :`<span class="btn-tricount-non">Hors Tricount</span>`;
     return`<div class="tx-item" data-id="${t.id}" data-type="${t.type}" style="cursor:pointer;">
       <div class="tx-left">
         <span class="tx-name">${t.description}</span>
