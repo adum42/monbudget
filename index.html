@@ -400,7 +400,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <div class="tx-filters">
           <select id="f-type" onchange="renderTransactions()"><option value="all">Tous</option><option value="entrée">Entrées</option><option value="sortie">Sorties</option></select>
           <select id="f-cat" onchange="renderTransactions()"><option value="all">Toutes catégories</option></select>
-          <select id="f-tricount" onchange="renderTransactions()"><option value="all">Tricount : tous</option><option value="a-valider">À valider</option></select>
+          <select id="f-tricount" onchange="renderTransactions()"><option value="all">Tricount : tous</option><option value="non">Hors tricount</option><option value="oui">À valider</option><option value="oui validé">Validés</option></select>
           <select id="f-epingle" onchange="renderTransactions()"><option value="all">Épingle : tous</option><option value="oui">Épinglés</option><option value="non">Non épinglés</option></select>
         </div>
         <div class="tx-list" id="tx-list"><div class="loading">Chargement...</div></div>
@@ -752,7 +752,7 @@ function renderTransactions(){
   let txs=txOfMonth().filter(t=>t.type!=='mouvement').sort((a,b)=>b.date.localeCompare(a.date));
   if(typeF!=='all') txs=txs.filter(t=>t.type===typeF);
   if(catF!=='all') txs=txs.filter(t=>t.categorie_id===catF);
-  if(tcF==='a-valider') txs=txs.filter(t=>t.tricount==='oui');
+  if(tcF!=='all') txs=txs.filter(t=>(t.tricount||'non')===tcF);
   if(epF==='oui') txs=txs.filter(t=>t.epingle===true);
   if(epF==='non') txs=txs.filter(t=>!t.epingle);
   const list=document.getElementById('tx-list');
