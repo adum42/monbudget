@@ -74,7 +74,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .tx-filters select{padding:7px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;}
 .tx-list{display:flex;flex-direction:column;gap:8px;}
 .tx-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;gap:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);transition:border-color .15s;}
-.pin-icon{font-size:15px;flex-shrink:0;line-height:1;}
+.pin-icon{display:flex;align-items:center;flex-shrink:0;color:var(--muted);}
 .pin-icon-placeholder{width:15px;flex-shrink:0;}
 .tx-item:hover{border-color:rgba(255,255,255,.1);}
 .tx-left{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
@@ -749,7 +749,7 @@ function renderTransactions(){
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
       :`<span class="btn-tricount-non">Hors Tricount</span>`;
-    const pinIcon=t.epingle?`<span class="pin-icon" title="Épinglé">📌</span>`:'<span class="pin-icon-placeholder"></span>';
+    const pinIcon=t.epingle?`<span class="pin-icon" title="Épinglé"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></span>`:'<span class="pin-icon-placeholder"></span>';
     return`<div class="tx-item" data-id="${t.id}" data-type="${t.type}" style="cursor:pointer;">
       ${pinIcon}
       <div class="tx-left">
