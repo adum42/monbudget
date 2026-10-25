@@ -98,6 +98,16 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .btn-tricount-validate:hover{background:rgba(245,158,11,0.25);}
 .btn-tricount-done{padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--green);background:var(--green-soft);color:var(--green);font-size:11px;font-weight:500;white-space:nowrap;cursor:default;}
 .btn-tricount-non{padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--red);background:var(--red-soft);color:var(--red);font-size:11px;font-weight:500;white-space:nowrap;cursor:default;}
+.epingle-toggle{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;user-select:none;}
+.epingle-toggle:hover{border-color:rgba(255,255,255,.15);}
+.epingle-toggle input[type="checkbox"]{display:none;}
+.epingle-track{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--muted);transition:color .15s;flex:1;}
+.epingle-svg{transition:stroke .15s;}
+.epingle-hint{font-size:11px;color:var(--muted);opacity:.6;}
+.epingle-toggle:has(input:checked){border-color:var(--accent);}
+.epingle-toggle:has(input:checked) .epingle-track{color:var(--accent);}
+.epingle-toggle:has(input:checked) .epingle-svg{stroke:var(--accent);}
+.epingle-toggle:has(input:checked) .epingle-hint{color:var(--accent);opacity:.7;}
 .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 
@@ -258,10 +268,14 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <button class="tricount-btn" id="tc-btn-valide" onclick="setTricount('oui validé')">✓ Validé</button>
         </div>
       </div>
-      <div class="modal-field" style="display:flex;align-items:center;gap:10px;">
-        <input type="checkbox" id="modal-tx-epingle" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;">
-        <label for="modal-tx-epingle" style="margin:0;cursor:pointer;font-size:13px;">Épinglé</label>
-      </div>
+      <label class="epingle-toggle" for="modal-tx-epingle">
+        <input type="checkbox" id="modal-tx-epingle">
+        <span class="epingle-track">
+          <svg class="epingle-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+          Épinglé
+        </span>
+        <span class="epingle-hint">Mis en avant dans la liste</span>
+      </label>
     </div>
     <div class="modal-footer">
       <button class="btn-danger" id="tx-modal-delete" style="display:none" onclick="deleteTxFromModal()">Supprimer</button>
