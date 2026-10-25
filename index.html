@@ -73,7 +73,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .tx-filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
 .tx-filters select{padding:7px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;}
 .tx-list{display:flex;flex-direction:column;gap:8px;}
-.tx-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);transition:border-color .15s;}
+.tx-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;gap:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);transition:border-color .15s;}
+.pin-icon{font-size:15px;flex-shrink:0;line-height:1;}
+.pin-icon-placeholder{width:15px;flex-shrink:0;}
 .tx-item:hover{border-color:rgba(255,255,255,.1);}
 .tx-left{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
 .tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -255,6 +257,10 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <button class="tricount-btn" id="tc-btn-oui" onclick="setTricount('oui')">Oui</button>
           <button class="tricount-btn" id="tc-btn-valide" onclick="setTricount('oui validé')">✓ Validé</button>
         </div>
+      </div>
+      <div class="modal-field" style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" id="modal-tx-epingle" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;">
+        <label for="modal-tx-epingle" style="margin:0;cursor:pointer;font-size:13px;">Épinglé</label>
       </div>
     </div>
     <div class="modal-footer">
@@ -497,6 +503,7 @@ function openTxModal(tx, defaultType){
   if(tx&&tx.categorie_id) setTimeout(()=>document.getElementById('modal-tx-cat').value=tx.categorie_id,50);
   setTxType(currentTxType);
   setTricount(tx?tx.tricount||'non':'non');
+  document.getElementById('modal-tx-epingle').checked=tx?tx.epingle||false:false;
   document.getElementById('tx-modal-delete').style.display=tx?'block':'none';
   document.getElementById('tx-modal').classList.add('open');
   setTimeout(()=>document.getElementById('modal-tx-desc').focus(),100);
@@ -518,11 +525,12 @@ async function saveTx(){
   const amount=parseFloat(document.getElementById('modal-tx-amount').value);
   const date=document.getElementById('modal-tx-date').value;
   const cat_id=document.getElementById('modal-tx-cat').value||null;
+  const epingle=document.getElementById('modal-tx-epingle').checked;
   if(!desc||!amount||!date) return;
   if(editingTxId){
-    await sb.from('transactions').update({description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount}).eq('id',editingTxId);
+    await sb.from('transactions').update({description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount,epingle}).eq('id',editingTxId);
   } else {
-    await sb.from('transactions').insert([{user_id:currentUser.id,description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount}]);
+    await sb.from('transactions').insert([{user_id:currentUser.id,description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount,epingle}]);
   }
   closeTxModal();await loadTransactions();renderAll();
 }
@@ -741,7 +749,9 @@ function renderTransactions(){
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
       :`<span class="btn-tricount-non">Hors Tricount</span>`;
+    const pinIcon=t.epingle?`<span class="pin-icon" title="Épinglé">📌</span>`:'<span class="pin-icon-placeholder"></span>';
     return`<div class="tx-item" data-id="${t.id}" data-type="${t.type}" style="cursor:pointer;">
+      ${pinIcon}
       <div class="tx-left">
         <span class="tx-name">${t.description}</span>
         <span class="tx-meta">${meta}</span>
