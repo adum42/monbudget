@@ -722,7 +722,7 @@ function renderMetrics(){
 function renderTransactions(){
   const typeF=document.getElementById('f-type').value;
   const catF=document.getElementById('f-cat').value;
-  let txs=txOfMonth().filter(t=>t.type!=='mouvement');
+  let txs=txOfMonth().filter(t=>t.type!=='mouvement').sort((a,b)=>b.date.localeCompare(a.date));
   if(typeF!=='all') txs=txs.filter(t=>t.type===typeF);
   if(catF!=='all') txs=txs.filter(t=>t.categorie_id===catF);
   const list=document.getElementById('tx-list');
