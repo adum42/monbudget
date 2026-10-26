@@ -110,6 +110,29 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .epingle-toggle:has(input:checked) .epingle-hint{color:var(--accent);opacity:.7;}
 .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+.tx-note{font-size:11px;color:var(--muted);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tx-search-wrap{position:relative;margin-bottom:12px;}
+.tx-search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);}
+.tx-search-input{width:100%;padding:8px 12px 8px 34px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;}
+.tx-search-input:focus{border-color:var(--accent);}
+.btn-view-all{padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:12px;white-space:nowrap;}
+.btn-view-all.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+.confirm-delete-row{display:flex;align-items:center;gap:8px;margin-right:auto;}
+.btn-confirm-delete{padding:9px 14px;background:var(--red);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;}
+.btn-dup{padding:9px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:13px;}
+.btn-dup:hover{border-color:var(--accent);color:var(--accent);}
+.stats-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.stats-kpi{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;}
+.stats-kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.stats-kpi-value{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
+.stats-kpi-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.top5-list{display:flex;flex-direction:column;gap:8px;}
+.top5-item{display:flex;align-items:center;gap:10px;}
+.top5-rank{font-size:11px;color:var(--muted);width:16px;flex-shrink:0;text-align:right;}
+.top5-bar-wrap{flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:6px;overflow:hidden;}
+.top5-bar{height:6px;border-radius:3px;background:var(--accent);}
+.top5-name{font-size:12px;min-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top5-amount{font-size:12px;font-weight:600;font-family:'Syne',sans-serif;color:var(--red);flex-shrink:0;}
 
 /* MONTH NAV */
 .month-nav{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
@@ -276,9 +299,14 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         </span>
         <span class="epingle-hint">Mis en avant dans la liste</span>
       </label>
+      <div class="modal-field">
+        <label>Note (optionnel)</label>
+        <input type="text" id="modal-tx-note" placeholder="Remarque, contexte...">
+      </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-danger" id="tx-modal-delete" style="display:none" onclick="deleteTxFromModal()">Supprimer</button>
+    <div class="modal-footer" id="tx-modal-footer">
+      <button class="btn-danger" id="tx-modal-delete" style="display:none" onclick="askDeleteTx()">Supprimer</button>
+      <button class="btn-dup" id="tx-modal-dup" style="display:none" onclick="dupTx()">Dupliquer</button>
       <button class="btn-cancel" onclick="closeTxModal()">Annuler</button>
       <button class="btn-confirm" onclick="saveTx()">Enregistrer</button>
     </div>
@@ -396,8 +424,16 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <button class="btn-add" style="background:var(--red);" onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
       </div>
       <div class="card">
-        <div class="card-title">Historique</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:0;">Historique</div>
+          <button class="btn-view-all" id="btn-view-all" onclick="toggleViewAll()">Tout voir</button>
+        </div>
+        <div class="tx-search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="tx-search-input" id="tx-search" placeholder="Rechercher une transaction..." oninput="renderTransactions()">
+        </div>
         <div class="tx-filters">
+          <select id="f-sort" onchange="renderTransactions()"><option value="date">Trier : date</option><option value="montant-desc">Montant ↓</option><option value="montant-asc">Montant ↑</option></select>
           <select id="f-type" onchange="renderTransactions()"><option value="all">Tous</option><option value="entrée">Entrées</option><option value="sortie">Sorties</option></select>
           <select id="f-cat" onchange="renderTransactions()"><option value="all">Toutes catégories</option></select>
           <select id="f-tricount" onchange="renderTransactions()"><option value="all">Tricount : tous</option><option value="non">Hors tricount</option><option value="oui">À valider</option><option value="oui validé">Validés</option></select>
@@ -439,9 +475,14 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 
     <!-- STATS -->
     <div class="section" id="tab-stats">
+      <div class="stats-kpis" id="stats-kpis"></div>
       <div class="stats-grid">
         <div class="card"><div class="card-title">Sorties par catégorie</div><div class="chart-wrap"><canvas id="chart-cat"></canvas></div></div>
         <div class="card"><div class="card-title">Évolution 6 mois</div><div class="chart-wrap"><canvas id="chart-months"></canvas></div></div>
+      </div>
+      <div class="card" id="stats-top5-card">
+        <div class="card-title">Top 5 dépenses du mois</div>
+        <div class="top5-list" id="stats-top5"></div>
       </div>
     </div>
   </main>
@@ -456,6 +497,8 @@ let currentUser=null,categories=[],transactions=[],comptes=[],soldes=[];
 let currentMonth=new Date().toISOString().slice(0,7);
 let chartCat=null,chartMonths=null,chartComptes=null;
 let currentTricount='non';
+let viewAllMonths=false;
+let deleteConfirmPending=false;
 const fmt=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
 // ── EMOJI ─────────────────────────────────────────────
@@ -507,6 +550,7 @@ let currentTxType='entrée';
 
 function openTxModal(tx, defaultType){
   editingTxId=tx?tx.id:null;
+  deleteConfirmPending=false;
   currentTxType=tx?tx.type:(defaultType||'entrée');
   const isEntree=currentTxType==='entrée';
   document.getElementById('tx-modal-title').textContent=tx?'Modifier la transaction':(isEntree?'➕ Entrée d\'argent':'➖ Sortie d\'argent');
@@ -514,6 +558,7 @@ function openTxModal(tx, defaultType){
   document.getElementById('modal-tx-desc').value=tx?tx.description:'';
   document.getElementById('modal-tx-amount').value=tx?tx.montant:'';
   document.getElementById('modal-tx-date').value=tx?tx.date:new Date().toISOString().split('T')[0];
+  document.getElementById('modal-tx-note').value=tx?tx.note||'':'';
   document.getElementById('tx-type-toggle-row').style.display=tx?'flex':'none';
   updateCatSelect();
   if(tx&&tx.categorie_id) setTimeout(()=>document.getElementById('modal-tx-cat').value=tx.categorie_id,50);
@@ -521,10 +566,24 @@ function openTxModal(tx, defaultType){
   setTricount(tx?tx.tricount||'non':'non');
   document.getElementById('modal-tx-epingle').checked=tx?tx.epingle||false:false;
   document.getElementById('tx-modal-delete').style.display=tx?'block':'none';
+  document.getElementById('tx-modal-dup').style.display=tx?'block':'none';
+  resetDeleteConfirm();
   document.getElementById('tx-modal').classList.add('open');
   setTimeout(()=>document.getElementById('modal-tx-desc').focus(),100);
 }
-function closeTxModal(){document.getElementById('tx-modal').classList.remove('open');editingTxId=null;}
+function closeTxModal(){document.getElementById('tx-modal').classList.remove('open');editingTxId=null;deleteConfirmPending=false;resetDeleteConfirm();}
+function resetDeleteConfirm(){
+  deleteConfirmPending=false;
+  const f=document.getElementById('tx-modal-footer');
+  f.innerHTML=`<button class="btn-danger" id="tx-modal-delete" style="display:none" onclick="askDeleteTx()">Supprimer</button>
+    <button class="btn-dup" id="tx-modal-dup" style="display:none" onclick="dupTx()">Dupliquer</button>
+    <button class="btn-cancel" onclick="closeTxModal()">Annuler</button>
+    <button class="btn-confirm" onclick="saveTx()">Enregistrer</button>`;
+  if(editingTxId){
+    document.getElementById('tx-modal-delete').style.display='block';
+    document.getElementById('tx-modal-dup').style.display='block';
+  }
+}
 function setTxType(type){
   currentTxType=type;
   document.getElementById('btn-type-in').className='type-btn'+(type==='entrée'?' active-in':'');
@@ -542,18 +601,56 @@ async function saveTx(){
   const date=document.getElementById('modal-tx-date').value;
   const cat_id=document.getElementById('modal-tx-cat').value||null;
   const epingle=document.getElementById('modal-tx-epingle').checked;
+  const note=document.getElementById('modal-tx-note').value.trim()||null;
   if(!desc||!amount||!date) return;
   if(editingTxId){
-    await sb.from('transactions').update({description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount,epingle}).eq('id',editingTxId);
+    await sb.from('transactions').update({description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount,epingle,note}).eq('id',editingTxId);
   } else {
-    await sb.from('transactions').insert([{user_id:currentUser.id,description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount,epingle}]);
+    await sb.from('transactions').insert([{user_id:currentUser.id,description:desc,montant:amount,type:currentTxType,categorie_id:cat_id,date,tricount:currentTricount,epingle,note}]);
   }
   closeTxModal();await loadTransactions();renderAll();
+}
+function askDeleteTx(){
+  if(!editingTxId) return;
+  const f=document.getElementById('tx-modal-footer');
+  f.innerHTML=`<div class="confirm-delete-row">
+    <button class="btn-confirm-delete" onclick="deleteTxFromModal()">Confirmer la suppression</button>
+    <button class="btn-cancel" onclick="resetDeleteConfirm()">Annuler</button>
+  </div>`;
 }
 async function deleteTxFromModal(){
   if(!editingTxId) return;
   await sb.from('transactions').delete().eq('id',editingTxId);
   closeTxModal();await loadTransactions();renderAll();
+}
+function dupTx(){
+  if(!editingTxId) return;
+  const tx=transactions.find(t=>t.id===editingTxId);
+  if(!tx) return;
+  closeTxModal();
+  // Ouvre une nouvelle modale pré-remplie avec les valeurs de tx, date = aujourd'hui
+  const clone={...tx,id:null,date:new Date().toISOString().split('T')[0]};
+  // On appelle openTxModal avec un pseudo-tx sans id
+  editingTxId=null;
+  currentTxType=clone.type;
+  const isEntree=currentTxType==='entrée';
+  document.getElementById('tx-modal-title').textContent=isEntree?'➕ Entrée d\'argent':'➖ Sortie d\'argent';
+  document.getElementById('tx-modal-title').style.color=isEntree?'var(--green)':'var(--red)';
+  document.getElementById('modal-tx-desc').value=clone.description;
+  document.getElementById('modal-tx-amount').value=clone.montant;
+  document.getElementById('modal-tx-date').value=clone.date;
+  document.getElementById('modal-tx-note').value=clone.note||'';
+  document.getElementById('tx-type-toggle-row').style.display='none';
+  updateCatSelect();
+  if(clone.categorie_id) setTimeout(()=>document.getElementById('modal-tx-cat').value=clone.categorie_id,50);
+  setTxType(clone.type);
+  setTricount(clone.tricount||'non');
+  document.getElementById('modal-tx-epingle').checked=clone.epingle||false;
+  document.getElementById('tx-modal-delete').style.display='none';
+  document.getElementById('tx-modal-dup').style.display='none';
+  resetDeleteConfirm();
+  document.getElementById('tx-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-tx-desc').focus(),100);
 }
 
 // ── MODAL CAT ─────────────────────────────────────────
@@ -744,19 +841,32 @@ function renderMetrics(){
     <div class="metric"><div class="metric-label">Sorties</div><div class="metric-value red">${fmt(expense)} €</div></div>
     <div class="metric"><div class="metric-label">Solde du mois</div><div class="metric-value ${balance>=0?'green':'red'}">${fmt(balance)} €</div></div>`;
 }
+function toggleViewAll(){
+  viewAllMonths=!viewAllMonths;
+  const btn=document.getElementById('btn-view-all');
+  btn.classList.toggle('active',viewAllMonths);
+  btn.textContent=viewAllMonths?'Ce mois':'Tout voir';
+  renderTransactions();
+}
 function renderTransactions(){
   const typeF=document.getElementById('f-type').value;
   const catF=document.getElementById('f-cat').value;
   const tcF=document.getElementById('f-tricount').value;
   const epF=document.getElementById('f-epingle').value;
-  let txs=txOfMonth().filter(t=>t.type!=='mouvement').sort((a,b)=>b.date.localeCompare(a.date));
+  const sortF=document.getElementById('f-sort').value;
+  const search=(document.getElementById('tx-search').value||'').trim().toLowerCase();
+  let txs=(viewAllMonths?transactions:txOfMonth()).filter(t=>t.type!=='mouvement');
   if(typeF!=='all') txs=txs.filter(t=>t.type===typeF);
   if(catF!=='all') txs=txs.filter(t=>t.categorie_id===catF);
   if(tcF!=='all') txs=txs.filter(t=>(t.tricount||'non')===tcF);
   if(epF==='oui') txs=txs.filter(t=>t.epingle===true);
   if(epF==='non') txs=txs.filter(t=>!t.epingle);
+  if(search) txs=txs.filter(t=>t.description.toLowerCase().includes(search)||(t.note||'').toLowerCase().includes(search));
+  if(sortF==='montant-desc') txs.sort((a,b)=>b.montant-a.montant);
+  else if(sortF==='montant-asc') txs.sort((a,b)=>a.montant-b.montant);
+  else txs.sort((a,b)=>b.date.localeCompare(a.date));
   const list=document.getElementById('tx-list');
-  if(!txs.length){list.innerHTML='<div class="empty">Aucune transaction ce mois</div>';return;}
+  if(!txs.length){list.innerHTML=`<div class="empty">Aucune transaction${viewAllMonths?'':' ce mois'}</div>`;return;}
   list.innerHTML=txs.map(t=>{
     const isEntree=t.type==='entrée';
     const amountColor=isEntree?'green':'red';
@@ -764,6 +874,7 @@ function renderTransactions(){
     const badgeClass=isEntree?'badge-in':'badge-out';
     const badgeLabel=isEntree?'Entrée':'Sortie';
     const meta=`${t.date}${t.categories?' · '+(t.categories.emoji||'📁')+' '+t.categories.nom:''}`;
+    const noteHtml=t.note?`<span class="tx-note">${t.note}</span>`:'';
     const tc=t.tricount||'non';
     const tcBtn=tc==='oui'
       ?`<button class="btn-tricount-validate" data-tc-id="${t.id}">Valider Tricount</button>`
@@ -776,6 +887,7 @@ function renderTransactions(){
       <div class="tx-left">
         <span class="tx-name">${t.description}</span>
         <span class="tx-meta">${meta}</span>
+        ${noteHtml}
       </div>
       <div class="tx-right">
         ${tcBtn}
@@ -920,7 +1032,51 @@ function switchTab(name){
   if(name==='stats') renderCharts();
   if(name==='comptes'){renderComptes();renderChartComptes();}
 }
+function renderStatsKpis(){
+  const txs=txOfMonth();
+  const income=txs.filter(t=>t.type==='entrée').reduce((s,t)=>s+t.montant,0);
+  const expense=txs.filter(t=>t.type==='sortie').reduce((s,t)=>s+t.montant,0);
+  const ratio=income>0?Math.max(0,Math.min(100,Math.round((income-expense)/income*100))):0;
+  // Mois précédent
+  const[y,m]=currentMonth.split('-').map(Number);
+  const prevDate=new Date(y,m-2,1);
+  const prevMonth=`${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  const prevExpense=transactions.filter(t=>t.type==='sortie'&&t.date.startsWith(prevMonth)).reduce((s,t)=>s+t.montant,0);
+  const expDiff=prevExpense>0?Math.round((expense-prevExpense)/prevExpense*100):null;
+  const kpisEl=document.getElementById('stats-kpis');
+  kpisEl.innerHTML=`
+    <div class="stats-kpi">
+      <div class="stats-kpi-label">Ratio épargne</div>
+      <div class="stats-kpi-value" style="color:${ratio>=20?'var(--green)':ratio>0?'#F59E0B':'var(--red)'}">${ratio}%</div>
+      <div class="stats-kpi-sub">du revenu conservé</div>
+    </div>
+    <div class="stats-kpi">
+      <div class="stats-kpi-label">Dépenses</div>
+      <div class="stats-kpi-value" style="color:var(--red)">${fmt(expense)} €</div>
+      <div class="stats-kpi-sub">${expDiff!==null?(expDiff>0?'↑':'↓')+Math.abs(expDiff)+'% vs mois préc.':'Pas de comparaison'}</div>
+    </div>
+    <div class="stats-kpi">
+      <div class="stats-kpi-label">Solde du mois</div>
+      <div class="stats-kpi-value" style="color:${income-expense>=0?'var(--green)':'var(--red)'}">${fmt(income-expense)} €</div>
+      <div class="stats-kpi-sub">${fmt(income)} € entrées</div>
+    </div>`;
+  // Top 5 dépenses
+  const sorties=txs.filter(t=>t.type==='sortie').sort((a,b)=>b.montant-a.montant).slice(0,5);
+  const maxM=sorties.length?sorties[0].montant:1;
+  const top5El=document.getElementById('stats-top5');
+  const top5Card=document.getElementById('stats-top5-card');
+  if(!sorties.length){top5Card.style.display='none';return;}
+  top5Card.style.display='block';
+  top5El.innerHTML=sorties.map((t,i)=>`
+    <div class="top5-item">
+      <span class="top5-rank">${i+1}</span>
+      <span class="top5-name">${t.description}</span>
+      <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.round(t.montant/maxM*100)}%"></div></div>
+      <span class="top5-amount">${fmt(t.montant)} €</span>
+    </div>`).join('');
+}
 function renderCharts(){
+  renderStatsKpis();
   const COLORS=['#5B6EF5','#22C97A','#F05252','#F59E0B','#8B5CF6','#EC4899','#14B8A6','#F97316','#06B6D4','#84CC16'];
   const txs=txOfMonth().filter(t=>t.type==='sortie');
   const catMap={};
@@ -944,6 +1100,26 @@ function renderCharts(){
 // Fermer modales au clic extérieur
 ['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this) this.classList.remove('open');});
+});
+
+// Raccourcis clavier
+document.addEventListener('keydown',function(e){
+  // Ne pas déclencher si on est dans un input/textarea
+  const tag=document.activeElement.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+  if(e.key==='Escape'){
+    ['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
+      document.getElementById(id).classList.remove('open');
+    });
+    editingTxId=null;deleteConfirmPending=false;
+  }
+  if(e.key==='n'||e.key==='N'){
+    // Ouvrir nouvelle transaction si aucune modale ouverte
+    const anyOpen=[...document.querySelectorAll('.modal-overlay.open')].length>0;
+    if(!anyOpen&&currentUser&&document.getElementById('tab-transactions').classList.contains('active')){
+      openTxModal(null,'sortie');
+    }
+  }
 });
 
 document.addEventListener('DOMContentLoaded',function(){
