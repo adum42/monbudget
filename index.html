@@ -1033,7 +1033,7 @@ function switchTab(name){
   if(name==='comptes'){renderComptes();renderChartComptes();}
 }
 function renderStatsKpis(){
-  const txs=txOfMonth();
+  const txs=txOfMonth().filter(t=>t.type!=='mouvement');
   const income=txs.filter(t=>t.type==='entrée').reduce((s,t)=>s+t.montant,0);
   const expense=txs.filter(t=>t.type==='sortie').reduce((s,t)=>s+t.montant,0);
   const ratio=income>0?Math.max(0,Math.min(100,Math.round((income-expense)/income*100))):0;
