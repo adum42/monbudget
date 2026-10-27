@@ -481,7 +481,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <div class="card"><div class="card-title">Évolution 6 mois</div><div class="chart-wrap"><canvas id="chart-months"></canvas></div></div>
       </div>
       <div class="card" id="stats-top5-card">
-        <div class="card-title">Top 5 dépenses du mois</div>
+        <div class="card-title">Top 5 catégories de dépenses</div>
         <div class="top5-list" id="stats-top5"></div>
       </div>
     </div>
@@ -1060,19 +1060,25 @@ function renderStatsKpis(){
       <div class="stats-kpi-value" style="color:${income-expense>=0?'var(--green)':'var(--red)'}">${fmt(income-expense)} €</div>
       <div class="stats-kpi-sub">${fmt(income)} € entrées</div>
     </div>`;
-  // Top 5 dépenses
-  const sorties=txs.filter(t=>t.type==='sortie').sort((a,b)=>b.montant-a.montant).slice(0,5);
-  const maxM=sorties.length?sorties[0].montant:1;
+  // Top 5 catégories
+  const catMap={};
+  txs.filter(t=>t.type==='sortie').forEach(t=>{
+    const key=t.categories?(t.categories.emoji||'📁')+' '+t.categories.nom:'📁 Sans catégorie';
+    if(!catMap[key])catMap[key]=0;
+    catMap[key]+=t.montant;
+  });
+  const top5=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxM=top5.length?top5[0][1]:1;
   const top5El=document.getElementById('stats-top5');
   const top5Card=document.getElementById('stats-top5-card');
-  if(!sorties.length){top5Card.style.display='none';return;}
+  if(!top5.length){top5Card.style.display='none';return;}
   top5Card.style.display='block';
-  top5El.innerHTML=sorties.map((t,i)=>`
+  top5El.innerHTML=top5.map(([name,total],i)=>`
     <div class="top5-item">
       <span class="top5-rank">${i+1}</span>
-      <span class="top5-name">${t.description}</span>
-      <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.round(t.montant/maxM*100)}%"></div></div>
-      <span class="top5-amount">${fmt(t.montant)} €</span>
+      <span class="top5-name">${name}</span>
+      <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.round(total/maxM*100)}%"></div></div>
+      <span class="top5-amount">${fmt(total)} €</span>
     </div>`).join('');
 }
 function renderCharts(){
