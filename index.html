@@ -564,7 +564,7 @@ function openTxModal(tx, defaultType){
   if(tx&&tx.categorie_id) setTimeout(()=>document.getElementById('modal-tx-cat').value=tx.categorie_id,50);
   setTxType(currentTxType);
   setTricount(tx?tx.tricount||'non':'non');
-  document.getElementById('modal-tx-epingle').checked=tx?tx.epingle||false:false;
+  document.getElementById('modal-tx-epingle').checked=tx?tx.epingle||false:true;
   document.getElementById('tx-modal-delete').style.display=tx?'block':'none';
   document.getElementById('tx-modal-dup').style.display=tx?'block':'none';
   resetDeleteConfirm();
@@ -881,7 +881,10 @@ function renderTransactions(){
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
       :`<span class="btn-tricount-non">Hors Tricount</span>`;
-    const pinIcon=t.epingle?`<span class="pin-icon" title="Épinglé"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></span>`:'<span class="pin-icon-placeholder"></span>';
+    const pinSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>`;
+    const pinIcon=t.epingle
+      ?`<span class="pin-icon" data-pin-id="${t.id}" data-pin-val="1" title="Épinglé — cliquer pour désépingler" style="cursor:pointer;">${pinSvg}</span>`
+      :`<span class="pin-icon" data-pin-id="${t.id}" data-pin-val="0" title="Épingler" style="cursor:pointer;opacity:.25;">${pinSvg}</span>`;
     return`<div class="tx-item" data-id="${t.id}" data-type="${t.type}" style="cursor:pointer;">
       ${pinIcon}
       <div class="tx-left">
@@ -899,10 +902,21 @@ function renderTransactions(){
 
   document.querySelectorAll('.tx-item').forEach(el=>{
     el.addEventListener('click',(e)=>{
-      // Clic sur le bouton "Valider Tricount" → ne pas ouvrir la modale
       if(e.target.closest('[data-tc-id]')) return;
+      if(e.target.closest('[data-pin-id]')) return;
       const tx=transactions.find(t=>t.id===el.dataset.id);
       if(tx) openTxModal(tx);
+    });
+  });
+
+  document.querySelectorAll('[data-pin-id]').forEach(btn=>{
+    btn.addEventListener('click',async(e)=>{
+      e.stopPropagation();
+      const id=btn.dataset.pinId;
+      const newVal=btn.dataset.pinVal==='0';
+      await sb.from('transactions').update({epingle:newVal}).eq('id',id);
+      await loadTransactions();
+      renderTransactions();
     });
   });
 
