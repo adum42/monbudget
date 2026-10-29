@@ -1,0 +1,117 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>monbudget · Pointage</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#0f1117;--card:#181b24;--card2:#1f2330;--ink:#eceef5;--muted:#8d93a8;--line:#2a2f3e;--accent:#5B6EF5;--accent-soft:rgba(91,110,245,.15);--green:#22C97A;--green-soft:rgba(34,201,122,.14);--red:#F05252;--red-soft:rgba(240,82,82,.14);--amber:#F59E0B;--amber-soft:rgba(245,158,11,.14);--violet:#8B5CF6;--pink:#EC4899;--teal:#14B8A6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.big,.syne{font-family:"Syne",system-ui,sans-serif}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:8px;font-size:13px}nav a:hover{background:var(--accent-soft);color:var(--ink)}nav a.on{background:var(--accent);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:26px 16px 70px}h1{font-size:26px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.sub{color:var(--muted);margin:0 0 22px;max-width:760px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.muted{color:var(--muted);font-size:13px}
+.pos{color:var(--green)}.neg{color:var(--red)}.badge{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;white-space:nowrap}.b-ok{background:var(--green-soft);color:var(--green)}.b-warn{background:var(--amber-soft);color:var(--amber)}.b-ko{background:var(--red-soft);color:var(--red)}.b-info{background:var(--accent-soft);color:#9aa6ff}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}tr:last-child td{border-bottom:0}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.mt{margin-top:14px}.mt2{margin-top:24px}
+button{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:8px 14px;cursor:pointer}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+input,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}input[type=number]{width:130px}
+.note{background:var(--accent-soft);border:1px solid rgba(91,110,245,.35);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:20px}.note b{color:#b4bcff}
+.two{display:grid;gap:14px;grid-template-columns:1.5fr 1fr}@media(max-width:820px){.two{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+code{background:var(--card2);padding:1px 6px;border-radius:5px;font-size:13px}pre{background:var(--card2);border:1px solid var(--line);padding:12px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.45}
+</style></head><body><nav><b class="syne" style="padding:6px 10px 6px 0">monbudget · maquettes</b><a href="index.html" class="">Vue d'ensemble</a><a href="1-comptes.html" class="">Multi-comptes</a><a href="2-pointage.html" class="on">Pointage</a><a href="3-epargne.html" class="">Épargne mensuelle</a><a href="4-cagnottes.html" class="">Cagnottes</a><a href="5-budgets.html" class="">Budgets & récurrences</a><a href="6-cloture.html" class="">Clôture & import</a></nav><main>
+<h1>Idée 2 — Pointage &amp; rapprochement bancaire</h1>
+<p class="sub">Relevé en main (ou appli bancaire ouverte), tu saisis le solde affiché par la banque, puis tu coches chaque opération qui y apparaît. Quand l'écart tombe à zéro, tu es <b>certain</b> que tout est rentré. <b>Essaie :</b> coche les opérations restantes, puis regarde ce que l'app propose pour l'écart restant.</p>
+
+<div class="two">
+<div class="card">
+  <div class="row"><h2 style="margin:0">Compte courant — octobre</h2><span class="muted">depuis le rapprochement du 30/09</span></div>
+  <div class="row mt" style="flex-wrap:wrap">
+    <div class="muted">Afficher : <select id="filt"><option value="all">toutes</option><option value="todo">non pointées</option></select></div>
+    <div><button class="ghost" id="allBtn">Tout pointer sauf « prévu »</button></div>
+  </div>
+  <div class="scroll mt"><table id="tbl"></table></div>
+</div>
+
+<div>
+  <div class="card" style="position:sticky;top:70px">
+    <h3>Vérification du solde</h3>
+    <table>
+      <tr><td class="muted">Solde au 30/09 (rapproché)</td><td class="num" id="start"></td></tr>
+      <tr><td class="muted">+ opérations pointées</td><td class="num" id="sumP"></td></tr>
+      <tr><td><b>= Solde pointé</b></td><td class="num"><b id="pointe"></b></td></tr>
+      <tr><td class="muted">Solde du relevé banque</td><td class="num"><input type="number" step="0.01" id="releve" style="width:120px;text-align:right"></td></tr>
+    </table>
+    <div class="card mt" id="ecartBox" style="background:var(--card2);text-align:center">
+      <div class="muted">Écart</div><div class="big" id="ecart"></div><div id="ecartMsg" class="muted"></div>
+    </div>
+    <div id="hint" class="mt"></div>
+    <button id="valid" class="mt" style="width:100%" disabled>Valider le rapprochement</button>
+    <div class="muted mt">Solde calculé (y compris non pointé et prévu) : <b id="calc"></b></div>
+  </div>
+</div>
+</div>
+
+<div class="grid mt2">
+  <div class="card"><h3>4 statuts par opération</h3>
+  <table><tr><td><span class="badge b-info">prévu</span></td><td class="muted">généré par une récurrence, pas encore passé</td></tr>
+  <tr><td><span class="badge" style="background:var(--card2);color:var(--muted)">saisi</span></td><td class="muted">rentré dans l'app, pas vu sur le relevé</td></tr>
+  <tr><td><span class="badge b-warn">pointé</span></td><td class="muted">vu sur le relevé, en cours de rapprochement</td></tr>
+  <tr><td><span class="badge b-ok">rapproché</span></td><td class="muted">verrouillé : modifiable seulement après confirmation</td></tr></table></div>
+  <div class="card"><h3>Aide à la recherche d'écart</h3>
+  <p class="muted" style="margin:0">Quand il reste un écart, l'app cherche : une opération non pointée du même montant, une combinaison de 2 opérations, un montant inversé (saisi en entrée au lieu de sortie = écart double), une faute de frappe type 45,10 / 54,10 (écart divisible par 9).</p></div>
+  <div class="card"><h3>Pourquoi verrouiller</h3>
+  <p class="muted" style="margin:0">Une fois le mois rapproché, le solde de départ du mois suivant est garanti. Si tu modifies par erreur une ancienne opération, l'app te prévient qu'elle casse un rapprochement validé.</p></div>
+</div>
+
+<script>
+const START=1284.63;
+let ops=[
+ {d:'01/10',l:'Salaire',c:'💼',m:2140.00,s:'pointe'},
+ {d:'02/10',l:'Loyer',c:'🏠',m:-412.50,s:'pointe'},
+ {d:'03/10',l:'Virement → Livret A',c:'🔁',m:-300.00,s:'pointe'},
+ {d:'05/10',l:'Carrefour',c:'🛒',m:-86.42,s:'pointe'},
+ {d:'08/10',l:'Abonnement téléphone',c:'📱',m:-15.99,s:'saisi'},
+ {d:'11/10',l:'Essence',c:'⛽',m:-62.10,s:'saisi'},
+ {d:'14/10',l:'Remboursement Tricount',c:'👥',m:38.50,s:'saisi'},
+ {d:'17/10',l:'Restaurant',c:'🍽️',m:-47.80,s:'saisi'},
+ {d:'22/10',l:'Achat en ligne',c:'🎮',m:-24.99,s:'saisi'},
+ {d:'31/10',l:'Assurance habitation',c:'🛡️',m:-18.40,s:'prevu'}
+];
+const RELEVE=Math.round((START+ops.filter(o=>o.s!=='prevu').reduce((a,o)=>a+o.m,0)-15)*100)/100;
+const f=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const $=id=>document.getElementById(id);
+$('releve').value=RELEVE.toFixed(2);
+const badge=s=>({prevu:'<span class="badge b-info">prévu</span>',saisi:'<span class="badge" style="background:var(--card2);color:var(--muted)">saisi</span>',pointe:'<span class="badge b-warn">pointé</span>'}[s]);
+function render(){
+  const only=$('filt').value==='todo';
+  $('tbl').innerHTML='<tr><th style="width:34px"></th><th>Date</th><th>Libellé</th><th>Statut</th><th class="num">Montant</th></tr>'+
+  ops.map((o,i)=>(only&&o.s==='pointe')?'':`<tr style="${o.s==='prevu'?'opacity:.55':''}"><td><input type="checkbox" data-i="${i}" ${o.s==='pointe'?'checked':''} ${o.s==='prevu'?'disabled':''} style="width:18px;height:18px;accent-color:#F59E0B"></td><td class="muted">${o.d}</td><td>${o.c} ${o.l}${o.added?' <span class="badge b-info">ajoutée</span>':''}</td><td>${badge(o.s)}</td><td class="num ${o.m>0?'pos':''}">${o.m>0?'+':''}${f(o.m)}</td></tr>`).join('');
+  document.querySelectorAll('#tbl input').forEach(cb=>cb.onchange=e=>{ops[+e.target.dataset.i].s=e.target.checked?'pointe':'saisi';render();});
+  calc();
+}
+function calc(){
+  const sumP=ops.filter(o=>o.s==='pointe').reduce((a,o)=>a+o.m,0);
+  const pointe=START+sumP, rel=parseFloat($('releve').value)||0, ec=Math.round((rel-pointe)*100)/100;
+  $('start').textContent=f(START);$('sumP').textContent=(sumP>=0?'+':'')+f(sumP);$('pointe').textContent=f(pointe);
+  $('calc').textContent=f(START+ops.reduce((a,o)=>a+o.m,0));
+  $('ecart').textContent=(ec>0?'+':'')+f(ec);
+  const box=$('ecartBox'), todo=ops.filter(o=>o.s==='saisi');
+  $('hint').innerHTML='';
+  if(Math.abs(ec)<0.005){box.style.background='var(--green-soft)';$('ecart').style.color='var(--green)';$('ecartMsg').textContent='Tout concorde 🎉';$('valid').disabled=false;}
+  else{box.style.background='var(--red-soft)';$('ecart').style.color='var(--red)';$('valid').disabled=true;
+    $('ecartMsg').textContent=todo.length?`${todo.length} opération(s) encore non pointée(s)`:'Toutes les opérations sont pointées…';
+    const same=todo.find(o=>Math.abs(o.m-ec)<0.005);
+    if(same) $('hint').innerHTML=`<div class="note" style="margin:0">💡 L'opération <b>${same.l}</b> a exactement le montant de l'écart.</div>`;
+    else if(!todo.length) $('hint').innerHTML=`<div class="note" style="margin:0">💡 Aucune opération saisie ne correspond à ${f(ec)}. Il manque probablement une opération (frais bancaires ? cotisation carte ?).<br><button class="mt" id="addMiss">+ Ajouter « Frais bancaires » ${f(ec)}</button></div>`;
+    const b=$('addMiss'); if(b) b.onclick=()=>{ops.splice(ops.length-1,0,{d:'28/10',l:'Frais bancaires',c:'🏦',m:ec,s:'pointe',added:true});render();};
+  }
+}
+$('releve').oninput=calc;$('filt').onchange=render;
+$('allBtn').onclick=()=>{ops.forEach(o=>{if(o.s==='saisi')o.s='pointe'});render();};
+$('valid').onclick=()=>{ops.forEach(o=>{if(o.s==='pointe')o.s='rapproche'});
+  $('tbl').innerHTML=`<tr><td style="padding:30px;text-align:center"><div class="big pos">✓ Octobre rapproché</div><div class="muted mt">${ops.filter(o=>o.s==='rapproche').length} opérations verrouillées · nouveau solde de référence : ${$('pointe').textContent} au 28/10<br>L'opération « prévu » reste ouverte pour le prochain pointage.</div></td></tr>`;
+  $('valid').disabled=true;$('valid').textContent='Rapprochement enregistré';};
+render();
+</script>
+
+</main></body></html>

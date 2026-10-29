@@ -1,0 +1,89 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>monbudget · Vue d'ensemble</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#0f1117;--card:#181b24;--card2:#1f2330;--ink:#eceef5;--muted:#8d93a8;--line:#2a2f3e;--accent:#5B6EF5;--accent-soft:rgba(91,110,245,.15);--green:#22C97A;--green-soft:rgba(34,201,122,.14);--red:#F05252;--red-soft:rgba(240,82,82,.14);--amber:#F59E0B;--amber-soft:rgba(245,158,11,.14);--violet:#8B5CF6;--pink:#EC4899;--teal:#14B8A6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.big,.syne{font-family:"Syne",system-ui,sans-serif}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:8px;font-size:13px}nav a:hover{background:var(--accent-soft);color:var(--ink)}nav a.on{background:var(--accent);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:26px 16px 70px}h1{font-size:26px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.sub{color:var(--muted);margin:0 0 22px;max-width:760px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.muted{color:var(--muted);font-size:13px}
+.pos{color:var(--green)}.neg{color:var(--red)}.badge{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;white-space:nowrap}.b-ok{background:var(--green-soft);color:var(--green)}.b-warn{background:var(--amber-soft);color:var(--amber)}.b-ko{background:var(--red-soft);color:var(--red)}.b-info{background:var(--accent-soft);color:#9aa6ff}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}tr:last-child td{border-bottom:0}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.mt{margin-top:14px}.mt2{margin-top:24px}
+button{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:8px 14px;cursor:pointer}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+input,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}input[type=number]{width:130px}
+.note{background:var(--accent-soft);border:1px solid rgba(91,110,245,.35);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:20px}.note b{color:#b4bcff}
+.two{display:grid;gap:14px;grid-template-columns:1.5fr 1fr}@media(max-width:820px){.two{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+code{background:var(--card2);padding:1px 6px;border-radius:5px;font-size:13px}pre{background:var(--card2);border:1px solid var(--line);padding:12px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.45}
+</style></head><body><nav><b class="syne" style="padding:6px 10px 6px 0">monbudget · maquettes</b><a href="index.html" class="on">Vue d'ensemble</a><a href="1-comptes.html" class="">Multi-comptes</a><a href="2-pointage.html" class="">Pointage</a><a href="3-epargne.html" class="">Épargne mensuelle</a><a href="4-cagnottes.html" class="">Cagnottes</a><a href="5-budgets.html" class="">Budgets & récurrences</a><a href="6-cloture.html" class="">Clôture & import</a></nav><main>
+<h1>monbudget → app de gestion complète</h1>
+<p class="sub">Six idées d'évolution à partir de l'existant (transactions, catégories, comptes, soldes manuels, stats). Chaque page est une maquette cliquable avec de fausses données ; les pages 2 et 4 sont interactives.</p>
+
+<div class="grid">
+  <a href="1-comptes.html" class="card" style="text-decoration:none;color:inherit">
+    <span class="badge b-info">Idée 1 · fondation</span><h3 class="mt">Multi-comptes &amp; soldes</h3>
+    <p class="muted">Chaque transaction rattachée à un compte. Une carte par compte : solde calculé, solde banque, écart, date du dernier rapprochement.</p></a>
+  <a href="2-pointage.html" class="card" style="text-decoration:none;color:inherit">
+    <span class="badge b-ok">Idée 2 · cœur du besoin</span><h3 class="mt">Pointage &amp; rapprochement</h3>
+    <p class="muted">Tu saisis le solde du relevé, tu coches les opérations, l'app calcule l'écart en direct. Écart = 0 → mois verrouillé.</p></a>
+  <a href="3-epargne.html" class="card" style="text-decoration:none;color:inherit">
+    <span class="badge b-info">Idée 3</span><h3 class="mt">Suivi de l'épargne mensuelle</h3>
+    <p class="muted">Combien j'ai mis de côté chaque mois, sur quel livret, taux d'épargne, objectif mensuel et cumul annuel.</p></a>
+  <a href="4-cagnottes.html" class="card" style="text-decoration:none;color:inherit">
+    <span class="badge b-ok">Idée 4 · ta demande</span><h3 class="mt">Cagnottes par thème</h3>
+    <p class="muted">Apport appart, Noël, vacances… réparties virtuellement sur tes livrets, avec versement mensuel conseillé pour tenir la date.</p></a>
+  <a href="5-budgets.html" class="card" style="text-decoration:none;color:inherit">
+    <span class="badge b-info">Idée 5</span><h3 class="mt">Budgets &amp; récurrences</h3>
+    <p class="muted">Plafond par catégorie <b>suggéré à partir des mois précédents</b>, opérations récurrentes (loyer, abonnements, salaire) et solde prévisionnel de fin de mois.</p></a>
+  <a href="6-cloture.html" class="card" style="text-decoration:none;color:inherit">
+    <span class="badge b-info">Idée 6</span><h3 class="mt">Clôture du mois &amp; import</h3>
+    <p class="muted">Checklist mensuelle qui garantit que tout est rentré, import CSV de la banque avec détection des oublis et doublons.</p></a>
+</div>
+
+<h2 class="mt2">Ordre de développement conseillé</h2>
+<div class="card scroll"><table>
+<tr><th>Étape</th><th>Contenu</th><th>Pourquoi dans cet ordre</th><th>Effort</th></tr>
+<tr><td><b>1</b></td><td>Compte sur chaque transaction + statut de pointage</td><td class="muted">Tout le reste en dépend (soldes par compte, rapprochement, épargne)</td><td><span class="badge b-ok">faible</span></td></tr>
+<tr><td><b>2</b></td><td>Écran de rapprochement</td><td class="muted">C'est ta garantie « j'ai tout rentré »</td><td><span class="badge b-warn">moyen</span></td></tr>
+<tr><td><b>3</b></td><td>Cagnottes thématiques</td><td class="muted">Indépendant, très motivant au quotidien</td><td><span class="badge b-warn">moyen</span></td></tr>
+<tr><td><b>4</b></td><td>Suivi épargne mensuelle</td><td class="muted">Se calcule à partir des virements vers les comptes épargne</td><td><span class="badge b-ok">faible</span></td></tr>
+<tr><td><b>5</b></td><td>Récurrences + budgets + prévisionnel</td><td class="muted">Confort, réduit la saisie</td><td><span class="badge b-warn">moyen</span></td></tr>
+<tr><td><b>6</b></td><td>Import CSV + clôture</td><td class="muted">Le plus gros morceau, mais rend le pointage quasi automatique</td><td><span class="badge b-ko">élevé</span></td></tr>
+</table></div>
+
+<h2 class="mt2">Évolutions du schéma Supabase</h2>
+<pre>-- 1. Rattacher chaque opération à un compte + statut de pointage
+ALTER TABLE transactions ADD COLUMN compte_id     bigint REFERENCES comptes(id);
+ALTER TABLE transactions ADD COLUMN compte_dest_id bigint REFERENCES comptes(id); -- pour les 'mouvement'
+ALTER TABLE transactions ADD COLUMN statut text DEFAULT 'saisi'
+      CHECK (statut IN ('prevu','saisi','pointe','rapproche'));
+ALTER TABLE transactions ADD COLUMN date_valeur date;   -- date de passage en banque
+
+-- 2. Comptes typés
+ALTER TABLE comptes ADD COLUMN type text DEFAULT 'courant'; -- courant | epargne | especes | credit
+ALTER TABLE comptes ADD COLUMN couleur text, ADD COLUMN archive bool DEFAULT false;
+
+-- 3. Rapprochements (remplace / complète la table soldes)
+CREATE TABLE rapprochements (
+  id bigserial PRIMARY KEY, compte_id bigint REFERENCES comptes(id),
+  date_releve date, solde_releve numeric(12,2), solde_pointe numeric(12,2),
+  ecart numeric(12,2), valide bool DEFAULT false, created_at timestamptz DEFAULT now());
+
+-- 4. Cagnottes thématiques
+CREATE TABLE cagnottes (id bigserial PRIMARY KEY, nom text, emoji text, couleur text,
+  objectif numeric(12,2), date_cible date, compte_id bigint REFERENCES comptes(id), archive bool DEFAULT false);
+CREATE TABLE cagnotte_mouvements (id bigserial PRIMARY KEY, cagnotte_id bigint REFERENCES cagnottes(id),
+  date date, montant numeric(12,2), transaction_id bigint REFERENCES transactions(id), note text);
+
+-- 5. Budgets et récurrences
+CREATE TABLE budgets (id bigserial PRIMARY KEY, categorie_id bigint REFERENCES categories(id),
+  mois date, plafond numeric(12,2));            -- mois NULL = budget par défaut
+CREATE TABLE recurrences (id bigserial PRIMARY KEY, description text, montant numeric(12,2), type text,
+  categorie_id bigint, compte_id bigint, jour_du_mois int, frequence text DEFAULT 'mensuel', actif bool DEFAULT true);</pre>
+
+<div class="note"><b>Point clé :</b> aujourd'hui le solde par compte repose sur <code>solde_initial</code> + saisies manuelles dans <code>soldes</code>. Avec <code>compte_id</code> sur les transactions, le solde devient <i>calculé</i> (solde initial + somme des opérations), et la table <code>soldes</code> devient la <i>vérité banque</i> à laquelle on compare. C'est cette comparaison qui te dit si tu as tout saisi.</div>
+
+</main></body></html>

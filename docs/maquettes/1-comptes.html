@@ -1,0 +1,80 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>monbudget · Multi-comptes</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#0f1117;--card:#181b24;--card2:#1f2330;--ink:#eceef5;--muted:#8d93a8;--line:#2a2f3e;--accent:#5B6EF5;--accent-soft:rgba(91,110,245,.15);--green:#22C97A;--green-soft:rgba(34,201,122,.14);--red:#F05252;--red-soft:rgba(240,82,82,.14);--amber:#F59E0B;--amber-soft:rgba(245,158,11,.14);--violet:#8B5CF6;--pink:#EC4899;--teal:#14B8A6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.big,.syne{font-family:"Syne",system-ui,sans-serif}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:8px;font-size:13px}nav a:hover{background:var(--accent-soft);color:var(--ink)}nav a.on{background:var(--accent);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:26px 16px 70px}h1{font-size:26px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.sub{color:var(--muted);margin:0 0 22px;max-width:760px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.muted{color:var(--muted);font-size:13px}
+.pos{color:var(--green)}.neg{color:var(--red)}.badge{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;white-space:nowrap}.b-ok{background:var(--green-soft);color:var(--green)}.b-warn{background:var(--amber-soft);color:var(--amber)}.b-ko{background:var(--red-soft);color:var(--red)}.b-info{background:var(--accent-soft);color:#9aa6ff}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}tr:last-child td{border-bottom:0}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.mt{margin-top:14px}.mt2{margin-top:24px}
+button{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:8px 14px;cursor:pointer}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+input,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}input[type=number]{width:130px}
+.note{background:var(--accent-soft);border:1px solid rgba(91,110,245,.35);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:20px}.note b{color:#b4bcff}
+.two{display:grid;gap:14px;grid-template-columns:1.5fr 1fr}@media(max-width:820px){.two{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+code{background:var(--card2);padding:1px 6px;border-radius:5px;font-size:13px}pre{background:var(--card2);border:1px solid var(--line);padding:12px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.45}
+</style></head><body><nav><b class="syne" style="padding:6px 10px 6px 0">monbudget · maquettes</b><a href="index.html" class="">Vue d'ensemble</a><a href="1-comptes.html" class="on">Multi-comptes</a><a href="2-pointage.html" class="">Pointage</a><a href="3-epargne.html" class="">Épargne mensuelle</a><a href="4-cagnottes.html" class="">Cagnottes</a><a href="5-budgets.html" class="">Budgets & récurrences</a><a href="6-cloture.html" class="">Clôture & import</a></nav><main>
+<h1>Idée 1 — Tous les comptes d'un coup d'œil</h1>
+<p class="sub">Chaque compte affiche deux soldes : celui <b>calculé</b> par l'app à partir de tes saisies, et celui <b>de la banque</b> (dernier relevé saisi). Le voyant indique si les deux concordent et depuis quand tu n'as pas vérifié.</p>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+  <div class="card"><div class="muted">Patrimoine total</div><div class="big">24 358,42 €</div><div class="muted pos">+612 € ce mois</div></div>
+  <div class="card"><div class="muted">Disponible (courants)</div><div class="big">1 846,17 €</div><div class="muted">2 comptes</div></div>
+  <div class="card"><div class="muted">Épargne</div><div class="big">22 472,25 €</div><div class="muted">3 livrets</div></div>
+  <div class="card"><div class="muted">Comptes à vérifier</div><div class="big" style="color:var(--amber)">2</div><div class="muted">sur 6</div></div>
+</div>
+
+<h2 class="mt2">Comptes courants</h2>
+<div class="grid">
+  <div class="card" style="border-left:4px solid var(--accent)">
+    <div class="row"><h3 style="margin:0">Compte courant</h3><span class="badge b-ok">✓ rapproché</span></div>
+    <div class="big mt">1 512,40 €</div>
+    <table class="mt"><tr><td class="muted">Solde banque (25/10)</td><td class="num">1 512,40 €</td></tr>
+    <tr><td class="muted">Écart</td><td class="num pos">0,00 €</td></tr>
+    <tr><td class="muted">Non pointées</td><td class="num">0</td></tr></table>
+  </div>
+  <div class="card" style="border-left:4px solid var(--teal)">
+    <div class="row"><h3 style="margin:0">Compte secondaire</h3><span class="badge b-warn">⚠ écart</span></div>
+    <div class="big mt">333,77 €</div>
+    <table class="mt"><tr><td class="muted">Solde banque (28/10)</td><td class="num">318,77 €</td></tr>
+    <tr><td class="muted">Écart</td><td class="num neg">−15,00 €</td></tr>
+    <tr><td class="muted">Non pointées</td><td class="num">3</td></tr></table>
+    <button class="mt" style="width:100%">Rapprocher maintenant</button>
+  </div>
+  <div class="card" style="border-left:4px solid var(--muted)">
+    <div class="row"><h3 style="margin:0">Espèces</h3><span class="badge b-ko">⏱ 47 jours</span></div>
+    <div class="big mt">40,00 €</div>
+    <table class="mt"><tr><td class="muted">Dernier comptage</td><td class="num">12/09</td></tr>
+    <tr><td class="muted">Écart</td><td class="num">—</td></tr>
+    <tr><td class="muted">Non pointées</td><td class="num">2</td></tr></table>
+  </div>
+</div>
+
+<h2 class="mt2">Comptes épargne</h2>
+<div class="card scroll"><table>
+<tr><th>Compte</th><th class="num">Solde</th><th class="num">Ce mois</th><th class="num">Plafond</th><th style="width:160px">Remplissage</th><th>État</th></tr>
+<tr><td><span class="dot" style="background:var(--green)"></span>Livret A</td><td class="num">14 210,00 €</td><td class="num pos">+300,00 €</td><td class="num">22 950 €</td><td><div class="bar"><span style="width:62%;background:var(--green)"></span></div></td><td><span class="badge b-ok">✓</span></td></tr>
+<tr><td><span class="dot" style="background:var(--amber)"></span>LDDS</td><td class="num">5 612,25 €</td><td class="num pos">+150,00 €</td><td class="num">12 000 €</td><td><div class="bar"><span style="width:47%;background:var(--amber)"></span></div></td><td><span class="badge b-ok">✓</span></td></tr>
+<tr><td><span class="dot" style="background:var(--violet)"></span>PEL</td><td class="num">2 650,00 €</td><td class="num pos">+45,00 €</td><td class="num">61 200 €</td><td><div class="bar"><span style="width:4%;background:var(--violet)"></span></div></td><td><span class="badge b-warn">relevé à saisir</span></td></tr>
+</table></div>
+
+<div class="two mt2">
+  <div class="card"><h3>Ce que ça change dans l'app actuelle</h3>
+  <ul class="muted" style="padding-left:18px;margin:0">
+    <li>Champ <b>Compte</b> obligatoire dans la modale de transaction (pré-rempli avec le compte « par défaut »).</li>
+    <li>Pour un <b>mouvement</b> : compte source + compte destination → le virement débite l'un et crédite l'autre, toujours exclu des stats.</li>
+    <li>Filtre par compte dans l'onglet Transactions.</li>
+    <li>Plafonds réglementaires des livrets stockés sur le compte → alerte quand tu approches.</li>
+  </ul></div>
+  <div class="card"><h3>Règles des voyants</h3>
+  <table><tr><td><span class="badge b-ok">✓ rapproché</span></td><td class="muted">écart = 0 et relevé &lt; 15 j</td></tr>
+  <tr><td><span class="badge b-warn">⚠ écart</span></td><td class="muted">solde calculé ≠ solde banque</td></tr>
+  <tr><td><span class="badge b-ko">⏱ N jours</span></td><td class="muted">pas de relevé depuis &gt; 30 j</td></tr></table></div>
+</div>
+
+</main></body></html>
