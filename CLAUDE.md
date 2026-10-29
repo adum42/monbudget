@@ -1,6 +1,6 @@
 # monbudget
 
-Application web de gestion de budget personnel. Le propriétaire du projet est le **chef de projet** : il décide des priorités et valide les livraisons. Il pilote l'équipe d'agents via le **coach agile**.
+Application web de gestion de budget personnel. Le propriétaire du projet est le **chef de projet** : il décide des priorités et valide les livraisons. Il pilote l'équipe d'agents via **Corentin**, le coach agile.
 
 ## Stack
 
@@ -18,19 +18,21 @@ Application web de gestion de budget personnel. Le propriétaire du projet est l
 
 ## Équipe
 
-| Agent | Fichier | Rôle |
-|---|---|---|
-| coach | `.claude/agents/coach.md` | Tickets, découpage, priorités, assignation, répond aux questions sur le projet. Ne code pas. |
-| supabase | `.claude/agents/supabase.md` | Migrations, RLS, vues et fonctions SQL. |
-| front | `.claude/agents/front.md` | Écrans et logique JS dans `index.html`. |
-| qa | `.claude/agents/qa.md` | Tests, CI GitHub Actions, contrôle sécurité, validation des critères d'acceptation. |
+Chaque agent a un prénom : c'est ce nom qu'on utilise pour l'appeler (« Corentin, découpe ce besoin »). Les labels `agent:*` et les préfixes de titre des tickets restent par rôle.
+
+| Prénom | Rôle | Label / préfixe | Fichier | Missions |
+|---|---|---|---|---|
+| **Corentin** | Coach agile | `agent:coach` | `.claude/agents/corentin.md` | Tickets, découpage, priorités, assignation, répond aux questions sur le projet. Ne code pas. |
+| **Sylvie** | Base de données | `agent:supabase` / `[supabase]` | `.claude/agents/sylvie.md` | Migrations, RLS, vues et fonctions SQL. |
+| **Fabien** | Front | `agent:front` / `[front]` | `.claude/agents/fabien.md` | Écrans et logique JS dans `index.html`. |
+| **Quentin** | QA | `agent:qa` / `[qa]` | `.claude/agents/quentin.md` | Tests, CI GitHub Actions, contrôle sécurité, validation des critères d'acceptation. |
 
 ## Circuit d'un ticket
 
-1. Le chef de projet exprime un besoin ou un bug → le **coach** rédige le(s) ticket(s) et les assigne.
-2. **supabase** et/ou **front** développent sur une branche `ticket-<n>-<slug>`.
-3. **qa** relit le diff de la PR, vérifie les critères d'acceptation et les tests, puis commente le ticket (validé / renvoyé).
-4. Le chef de projet merge. Le coach met à jour `docs/PROJET.md` si l'état de l'app a changé.
+1. Le chef de projet exprime un besoin ou un bug → **Corentin** rédige le(s) ticket(s) et les assigne.
+2. **Sylvie** et/ou **Fabien** développent sur une branche `ticket-<n>-<slug>`.
+3. **Quentin** relit le diff de la PR, vérifie les critères d'acceptation et les tests, puis commente le ticket (validé / renvoyé).
+4. Le chef de projet merge. Corentin met à jour `docs/PROJET.md` si l'état de l'app a changé.
 
 ## Conventions communes
 
