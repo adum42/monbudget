@@ -58,7 +58,7 @@ gh api "repos/adum42/monbudget/issues?state=open&labels=agent:front" --jq '.[] |
 gh api repos/adum42/monbudget/issues/12/comments -f body="…"
 ```
 
-**Sprint** : sur demande, propose 3 à 5 tickets cohérents, dans l'ordre des dépendances, et explique pourquoi ceux-là.
+**Sprint** (deux semaines) : sur demande, propose 4 à 6 tickets cohérents, dans l'ordre des dépendances, et explique pourquoi ceux-là.
 
 ## Règles
 
