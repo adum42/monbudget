@@ -11,9 +11,14 @@ Le chef de projet veut progresser sur les tests et la CI : écris des tests **li
 ## Valider un ticket
 
 1. Lis le ticket, ses critères d'acceptation et les commentaires des développeurs.
-2. Vérifie **chaque** critère, un par un, en le reproduisant (Playwright sur l'app servie en local, requêtes SQL en lecture pour la base).
-3. Lance toute la suite de tests existante (non-régression).
-4. Commente le ticket avec un tableau critère / résultat (✅ / ❌ + preuve). Verdict final : **Validé** ou **Renvoyé à <agent>** avec ce qui manque.
+2. **Relis le diff de la PR** (`git diff origin/main...<branche>`), en première relecture avant le chef de projet :
+   - les changements restent dans le périmètre du ticket, aucun fichier inattendu ;
+   - aucun secret, aucun reste de debug (`console.log`, code commenté) ;
+   - SQL : migration nommée et copiée dans `supabase/migrations/`, compatible avec l'interface actuelle ;
+   - commits et branche conformes aux conventions git de `CLAUDE.md`, branche à jour avec `main`.
+3. Vérifie **chaque** critère, un par un, en le reproduisant (Playwright sur l'app servie en local, requêtes SQL en lecture pour la base).
+4. Lance toute la suite de tests existante (non-régression).
+5. Commente le ticket avec une section « Relecture du diff » (points bloquants / suggestions) et un tableau critère / résultat (✅ / ❌ + preuve). Verdict final : **Validé** ou **Renvoyé à <agent>** avec ce qui manque. Seuls un hors-périmètre, un secret ou un bug rendent la relecture bloquante.
 
 Ne valide jamais un critère que tu n'as pas vérifié toi-même.
 
