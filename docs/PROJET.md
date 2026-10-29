@@ -88,12 +88,16 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 | 29/10/2026 | Pas d'import bancaire | choix du chef de projet |
 | 29/10/2026 | Équipe : coach, supabase, front, qa ; backlog dans GitHub Issues | voir `CLAUDE.md` |
 | 29/10/2026 | Sauvegarde v1 avant refonte (branche `sauvegarde/v1`, schéma `backup_v1`) ; une sauvegarde avant chaque étape | retour arrière rapide, voir `docs/RESTAURATION.md` |
+| 29/10/2026 | Virement = une seule transaction `mouvement` avec `compte_id` (source) et `compte_dest_id` (destination) ; `direction` abandonnée (#2, option A) | une ligne = un virement, pas de demi-virement possible |
+| 29/10/2026 | Compte « Compte courant » (Hello bank) = compte par défaut ; tous les comptes du chef de projet sont créés à l'étape 1 (#2) | suivre tous les comptes |
+| 29/10/2026 | On repart de zéro : chaque compte a un solde initial au 30/09/2026, les 58 transactions d'origine sont supprimées (conservées dans `backup_v1`) et le chef de projet ressaisit les opérations depuis le 01/10/2026 après #6 (#2) | données saisies d'emblée avec comptes et virements, et jeu de test réel |
+| 29/10/2026 | Les montants (soldes, solde initial) ne sont jamais écrits dans le repo ni dans les tickets | données personnelles |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
 ## 5. Glossaire
 
-- **Solde calculé** : solde initial du compte + somme des transactions rattachées à ce compte.
+- **Solde calculé** : solde initial du compte (à sa date de solde initial) + somme des transactions rattachées à ce compte depuis cette date, mouvements entrants et sortants compris.
 - **Solde banque** : solde lu sur le relevé, saisi dans `soldes`.
 - **Écart** : solde banque − solde calculé (ou − solde pointé pendant un rapprochement).
 - **Pointer** : cocher une opération vue sur le relevé.
