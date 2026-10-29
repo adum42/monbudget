@@ -1,0 +1,78 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>monbudget · Clôture & import</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#0f1117;--card:#181b24;--card2:#1f2330;--ink:#eceef5;--muted:#8d93a8;--line:#2a2f3e;--accent:#5B6EF5;--accent-soft:rgba(91,110,245,.15);--green:#22C97A;--green-soft:rgba(34,201,122,.14);--red:#F05252;--red-soft:rgba(240,82,82,.14);--amber:#F59E0B;--amber-soft:rgba(245,158,11,.14);--violet:#8B5CF6;--pink:#EC4899;--teal:#14B8A6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.big,.syne{font-family:"Syne",system-ui,sans-serif}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:8px;font-size:13px}nav a:hover{background:var(--accent-soft);color:var(--ink)}nav a.on{background:var(--accent);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:26px 16px 70px}h1{font-size:26px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.sub{color:var(--muted);margin:0 0 22px;max-width:760px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.muted{color:var(--muted);font-size:13px}
+.pos{color:var(--green)}.neg{color:var(--red)}.badge{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;white-space:nowrap}.b-ok{background:var(--green-soft);color:var(--green)}.b-warn{background:var(--amber-soft);color:var(--amber)}.b-ko{background:var(--red-soft);color:var(--red)}.b-info{background:var(--accent-soft);color:#9aa6ff}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}tr:last-child td{border-bottom:0}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.mt{margin-top:14px}.mt2{margin-top:24px}
+button{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:9px;padding:8px 14px;cursor:pointer}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+input,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}input[type=number]{width:130px}
+.note{background:var(--accent-soft);border:1px solid rgba(91,110,245,.35);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:20px}.note b{color:#b4bcff}
+.two{display:grid;gap:14px;grid-template-columns:1.5fr 1fr}@media(max-width:820px){.two{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+code{background:var(--card2);padding:1px 6px;border-radius:5px;font-size:13px}pre{background:var(--card2);border:1px solid var(--line);padding:12px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.45}
+</style></head><body><nav><b class="syne" style="padding:6px 10px 6px 0">monbudget · maquettes</b><a href="index.html" class="">Vue d'ensemble</a><a href="1-comptes.html" class="">Multi-comptes</a><a href="2-pointage.html" class="">Pointage</a><a href="3-epargne.html" class="">Épargne mensuelle</a><a href="4-cagnottes.html" class="">Cagnottes</a><a href="5-budgets.html" class="">Budgets & récurrences</a><a href="6-cloture.html" class="on">Clôture & import</a></nav><main>
+<h1>Idée 6 — Clôture du mois &amp; import bancaire</h1>
+<p class="sub">Deux outils pour ne plus rien oublier : un <b>import CSV</b> de l'export de ta banque, comparé à tes saisies, et un <b>rituel de clôture</b> mensuel qui ne se valide que quand tout est vert.</p>
+
+<div class="two">
+<div class="card">
+  <div class="row"><h2 style="margin:0">Import — releve_octobre.csv</h2><span class="muted">Compte courant · 14 lignes</span></div>
+  <div class="row mt" style="flex-wrap:wrap;gap:8px;justify-content:flex-start">
+    <span class="badge b-ok">10 correspondances</span><span class="badge b-info">2 à créer</span><span class="badge b-warn">1 à vérifier</span><span class="badge" style="background:var(--card2);color:var(--muted)">1 déjà importée</span>
+  </div>
+  <div class="scroll mt"><table>
+  <tr><th>Date</th><th>Libellé banque</th><th class="num">Montant</th><th>Résultat</th></tr>
+  <tr><td class="muted">05/10</td><td>CB CARREFOUR 0410</td><td class="num">−86,42</td><td><span class="badge b-ok">↔ Carrefour</span></td></tr>
+  <tr><td class="muted">08/10</td><td>PRLV SEPA OPERATEUR MOBILE</td><td class="num">−15,99</td><td><span class="badge b-ok">↔ Abonnement téléphone</span></td></tr>
+  <tr><td class="muted">12/10</td><td>CB STATION TOTAL</td><td class="num">−62,10</td><td><span class="badge b-ok">↔ Essence (saisi le 11/10)</span></td></tr>
+  <tr><td class="muted">17/10</td><td>CB LE BISTROT</td><td class="num">−47,80</td><td><span class="badge b-ok">↔ Restaurant</span></td></tr>
+  <tr><td class="muted">19/10</td><td>CB BOULANGERIE</td><td class="num">−6,40</td><td><span class="badge b-info">+ créer</span> <select style="font-size:12px;padding:3px"><option>🛒 Courses</option></select></td></tr>
+  <tr><td class="muted">23/10</td><td>CB AMAZON MKTP</td><td class="num">−24,99</td><td><span class="badge b-warn">? 2 candidates</span></td></tr>
+  <tr><td class="muted">28/10</td><td>FRAIS COTIS CARTE</td><td class="num">−15,00</td><td><span class="badge b-info">+ créer</span> <select style="font-size:12px;padding:3px"><option>🏦 Banque</option></select></td></tr>
+  <tr><td class="muted">02/10</td><td>PRLV LOYER</td><td class="num">−412,50</td><td><span class="badge" style="background:var(--card2);color:var(--muted)">déjà importée</span></td></tr>
+  </table></div>
+  <div class="row mt"><span class="muted">Les correspondances sont pointées automatiquement.</span><button>Importer &amp; pointer</button></div>
+</div>
+
+<div class="card">
+  <h2>Clôture d'octobre</h2>
+  <table>
+  <tr><td>✅</td><td>Compte courant rapproché</td><td class="muted num">écart 0 €</td></tr>
+  <tr><td>⚠️</td><td>Compte secondaire rapproché</td><td class="neg num">−15 €</td></tr>
+  <tr><td>✅</td><td>Livrets : soldes saisis</td><td class="muted num">3/3</td></tr>
+  <tr><td>✅</td><td>Toutes les opérations catégorisées</td><td class="muted num">0 sans cat.</td></tr>
+  <tr><td>✅</td><td>Remboursements Tricount validés</td><td class="muted num">2/2</td></tr>
+  <tr><td>⬜</td><td>Épargne du mois répartie en cagnottes</td><td class="muted num">495 € à répartir</td></tr>
+  <tr><td>⬜</td><td>Récurrences de novembre vérifiées</td><td class="muted num">7</td></tr>
+  </table>
+  <div class="bar mt"><span style="width:71%;background:var(--amber)"></span></div>
+  <div class="row mt"><span class="muted">5 / 7</span><button disabled style="opacity:.5">Clôturer octobre</button></div>
+</div>
+</div>
+
+<h2 class="mt2">Le bilan généré à la clôture</h2>
+<div class="card">
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+    <div><div class="muted">Entrées</div><div class="big" style="font-size:22px">2 178,50 €</div></div>
+    <div><div class="muted">Dépenses</div><div class="big" style="font-size:22px">1 566,50 €</div></div>
+    <div><div class="muted">Épargne réelle</div><div class="big pos" style="font-size:22px">+612 €</div></div>
+    <div><div class="muted">Patrimoine</div><div class="big" style="font-size:22px">24 358 €</div></div>
+  </div>
+  <p class="mt" style="margin-bottom:0">📝 <b>Résumé :</b> mois au-dessus de l'objectif d'épargne pour le 2<sup>e</sup> mois consécutif. Restaurants dépassés de 38 € (3<sup>e</sup> mois sur 4). Cagnotte Noël : il manque 180 € pour décembre. Une nouvelle dépense récurrente détectée : cotisation carte 15 €.</p>
+</div>
+
+<div class="grid mt2">
+  <div class="card"><h3>Matching de l'import</h3><p class="muted" style="margin:0">Même montant exact + date à ±4 jours = correspondance. Plusieurs candidates → à toi de choisir. Un hash (date+montant+libellé) évite de réimporter deux fois la même ligne.</p></div>
+  <div class="card"><h3>Règles de catégorisation</h3><p class="muted" style="margin:0">« libellé contient CARREFOUR → 🛒 Courses ». Les règles se créent d'un clic lors de l'import et s'appliquent ensuite toutes seules.</p></div>
+  <div class="card"><h3>Techniquement</h3><p class="muted" style="margin:0">Parsing CSV côté navigateur (PapaParse via CDN), un profil de colonnes par banque, aucune donnée bancaire envoyée ailleurs que dans ta base Supabase.</p></div>
+</div>
+
+</main></body></html>
