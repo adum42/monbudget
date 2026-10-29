@@ -1,6 +1,6 @@
 ---
 name: Fonctionnalité
-about: Nouvelle fonctionnalité ou évolution (rédigée par le coach)
+about: Nouvelle fonctionnalité ou évolution (rédigée par Corentin, le coach)
 title: "[agent] "
 labels: feature
 ---

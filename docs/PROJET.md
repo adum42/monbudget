@@ -1,6 +1,6 @@
 # monbudget — dossier projet
 
-> Base de connaissance du projet, tenue à jour par l'agent **coach**. Dernière mise à jour : 29/10/2026.
+> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 29/10/2026.
 > Elle décrit l'app **telle qu'elle est réellement** (code et base vérifiés), pas telle qu'on l'imagine.
 
 ## 1. Vision
@@ -87,6 +87,7 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 | — | Les mouvements sont exclus de toutes les stats | ce sont des virements internes |
 | 29/10/2026 | Pas d'import bancaire | choix du chef de projet |
 | 29/10/2026 | Équipe : coach, supabase, front, qa ; backlog dans GitHub Issues | voir `CLAUDE.md` |
+| 29/10/2026 | Les agents ont un prénom : Corentin (coach), Sylvie (supabase), Fabien (front), Quentin (qa) ; labels et préfixes de tickets inchangés | plus simple à appeler, voir `CLAUDE.md` |
 | 29/10/2026 | Sauvegarde v1 avant refonte (branche `sauvegarde/v1`, schéma `backup_v1`) ; une sauvegarde avant chaque étape | retour arrière rapide, voir `docs/RESTAURATION.md` |
 | 29/10/2026 | Virement = une seule transaction `mouvement` avec `compte_id` (source) et `compte_dest_id` (destination) ; `direction` abandonnée (#2, option A) | une ligne = un virement, pas de demi-virement possible |
 | 29/10/2026 | Compte « Compte courant » (Hello bank) = compte par défaut ; tous les comptes du chef de projet sont créés à l'étape 1 (#2) | suivre tous les comptes |
