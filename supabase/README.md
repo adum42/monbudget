@@ -11,12 +11,12 @@ Les deux projets sont sur le plan gratuit. Un projet gratuit inactif est mis en 
 
 ## Auth
 
-Configurée par le chef de projet le 02/11/2026 (inscription par email / mot de passe active sur les deux projets).
+Configurée par le chef de projet le 29/10/2026 (inscription par email / mot de passe active sur les deux projets).
 
 | | Test | Prod |
 |---|---|---|
 | *Site URL* | `http://localhost:3000` | `https://monbudget-lilac.vercel.app` |
-| *Redirect URLs* | `https://*-adum.vercel.app/**`, `http://localhost:*/**` | `https://monbudget-lilac.vercel.app` |
+| *Redirect URLs* | `https://*-adum.vercel.app/**`, `http://localhost:*/**` | `https://monbudget-lilac.vercel.app/**` |
 | Utilisateur de test | créé par le chef de projet ; identifiants dans les secrets GitHub `TEST_EMAIL` / `TEST_PASSWORD` | — |
 
 Aucun agent ne saisit ni ne lit de mot de passe.
@@ -28,7 +28,7 @@ Aucun agent ne saisit ni ne lit de mot de passe.
 1. **Écrire** (Sylvie) la migration dans `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`. `<nom>` est le nom de migration (snake_case, explicite : `etape1_comptes_tous_types_virements`) ; `<AAAAMMJJHHMM>` est sa version, unique et croissante.
 2. **Tester en local** (Sylvie, obligatoire) : sur un Postgres jetable, rejouer toutes les migrations de `supabase/migrations/` dans l'ordre des noms de fichiers, puis la nouvelle, avec des cas qui doivent réussir et des cas qui doivent échouer (harnais `tests/sql/` de #25 quand il sera livré). **Quentin** valide (relecture du diff + rejeu local).
 3. **Appliquer sur TEST** `ebupazakzfbpptmlrzze` (chef de projet) : ouvrir l'éditeur SQL du projet « monbudget-test », vérifier le nom du projet, coller le contenu **exact** du fichier **encadré par `begin;` … `commit;`** (l'éditeur ne fait pas de transaction automatique : sans cela, une erreur au milieu laisse la base à moitié migrée), exécuter.
-4. **Inscrire et vérifier sur TEST** (Sylvie) : inscription dans l'historique (requête ci-dessous), structure lue dans les catalogues, `get_advisors` sécurité et performance, commentaire du ticket. **Quentin** revérifie sur TEST (écritures uniquement en transaction annulée) et sur la preview Vercel, puis commente **Validé** ou **Renvoyé**.
+4. **Inscrire et vérifier sur TEST** (Sylvie) : inscription dans l'historique (requête ci-dessous), structure lue dans les catalogues, `get_advisors` sécurité et performance, commentaire du ticket. **Quentin** revérifie sur TEST (écritures uniquement en transaction annulée ou sur des données préfixées `TEST` supprimées ensuite ; parcours connectés via la CI (#9) ou délégués au chef de projet sur la preview ; sans connexion, Quentin vérifie seulement le bandeau TEST et l'écran de connexion), puis commente **Validé** ou **Renvoyé**.
 5. **Feu vert** du chef de projet, puis **appliquer sur PROD** `artvpflfhvouyngzgqob` : même geste qu'à l'étape 3 dans l'éditeur SQL du projet « budget-app », avec le **même fichier, sans aucune modification**. Si une sauvegarde est requise (migration qui transforme des données), le chef de projet l'exécute sur prod juste avant (voir `docs/RESTAURATION.md`).
 6. **Inscrire et vérifier sur PROD** (Sylvie) : inscription avec **la même version et le même nom** qu'en test, `list_migrations` identique sur les deux projets (aux écarts historiques près, voir plus bas), empreinte des catalogues de `public` identique, `get_advisors` sur prod. **Quentin** fait le même contrôle, en lecture seule.
 7. **PR, puis merge** par le chef de projet. Une migration est en prod **avant** le merge du front qui en dépend.
@@ -50,7 +50,7 @@ C'est la seule écriture qu'un agent fait sur la prod. On ne l'inscrit pas si l'
 Règles :
 
 - **Toujours** désigner un projet par son rôle **et** son identifiant, et indiquer explicitement le `project_id` dans chaque appel MCP Supabase (`execute_sql`, `list_tables`, `list_migrations`, `get_advisors`…). Jamais d'appel « par défaut ». Dans le dashboard, vérifier le nom du projet ouvert avant d'exécuter.
-- Les agents n'appellent pas `apply_migration`. `execute_sql` sert à lire, sauf l'inscription ci-dessus et les tests de Quentin sur TEST en transaction annulée (`begin; … rollback;`).
+- Les agents n'appellent pas `apply_migration`. `execute_sql` sert à lire, sauf l'inscription ci-dessus et, pour Quentin et sur TEST uniquement, les tests en transaction annulée (`begin; … rollback;`), les données préfixées `TEST` supprimées ensuite et le jeu de données fictives de #21.
 - On n'applique jamais sur prod une migration qui n'a pas d'abord réussi sur test et été validée par Quentin.
 - **Pas de modification hors migration enregistrée** : tout changement de structure correspond à un fichier de `supabase/migrations/` appliqué sur les deux bases et inscrit dans leur historique avec la même version.
 - Les données ne circulent jamais de prod vers test. Le jeu de données fictives de test est géré par Quentin (#21).

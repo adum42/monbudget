@@ -26,7 +26,7 @@ Le chef de projet veut progresser sur les tests et la CI : écris des tests **li
    - commits et branche conformes aux conventions git de `CLAUDE.md`, branche à jour avec `main`.
 3. Vérifie **chaque** critère, un par un, en le reproduisant :
    - **en local d'abord** : migrations de `supabase/migrations/` rejouées sur un Postgres jetable (cas qui réussissent et cas qui échouent, avec le bon rôle), app servie en local (donc sur TEST) avec Playwright ;
-   - **puis sur TEST**, une fois la migration appliquée par le chef de projet et inscrite par Sylvie : `list_migrations` (même version que le préfixe du fichier), structure lue dans les catalogues, cas d'écriture en transaction annulée, parcours sur la preview Vercel.
+   - **puis sur TEST**, une fois la migration appliquée par le chef de projet et inscrite par Sylvie : `list_migrations` (même version que le préfixe du fichier), structure lue dans les catalogues, cas d'écriture en transaction annulée ; parcours connectés via la CI (#9) ou délégués au chef de projet sur la preview ; sans connexion, tu vérifies seulement le bandeau TEST et l'écran de connexion.
 4. Lance toute la suite de tests existante (non-régression).
 5. Commente le ticket avec une section « Relecture du diff » (points bloquants / suggestions) et un tableau critère / résultat (✅ / ❌ + preuve). Verdict final : **Validé** (feu vert possible pour la prod) ou **Renvoyé à <prénom>** (Sylvie ou Fabien) avec ce qui manque. Seuls un hors-périmètre, un secret ou un bug rendent la relecture bloquante.
 

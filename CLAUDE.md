@@ -44,7 +44,7 @@ Chaque agent a un prénom : c'est ce nom qu'on utilise pour l'appeler (« Corent
 1. Le chef de projet exprime un besoin ou un bug → **Corentin** rédige le(s) ticket(s) et les assigne.
 2. **Sylvie** et/ou **Fabien** développent sur une branche `ticket-<n>-<slug>`. Une migration s'écrit dans `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql` et se teste d'abord sur un Postgres local jetable.
 3. **Quentin** relit le diff et recette **en local** (migration rejouée sur Postgres jetable, app servie en local sur TEST).
-4. **TEST** : le chef de projet applique la migration sur TEST `ebupazakzfbpptmlrzze` (éditeur SQL du dashboard, `begin; … commit;`) ; Sylvie l'inscrit dans l'historique et vérifie ; Quentin recette sur TEST et sur la preview Vercel, puis commente le ticket (**Validé** / **Renvoyé à …**).
+4. **TEST** : le chef de projet applique la migration sur TEST `ebupazakzfbpptmlrzze` (éditeur SQL du dashboard, `begin; … commit;`) ; Sylvie l'inscrit dans l'historique et vérifie ; Quentin recette sur TEST (parcours connectés via la CI (#9) ou délégués au chef de projet sur la preview ; sans connexion, Quentin vérifie seulement le bandeau TEST et l'écran de connexion), puis commente le ticket (**Validé** / **Renvoyé à …**).
 5. **Feu vert** du chef de projet → il applique la **même** migration sur PROD `artvpflfhvouyngzgqob` ; Sylvie l'inscrit avec la même version et vérifie ; Quentin fait le contrôle en lecture après application.
 6. PR, puis **merge** par le chef de projet. Une migration est en prod **avant** le merge du front qui en dépend. Corentin met à jour `docs/PROJET.md` si l'état de l'app a changé.
 
