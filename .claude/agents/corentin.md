@@ -68,4 +68,6 @@ gh api repos/adum42/monbudget/issues/12/comments -f body="…"
 - Ne crée pas de tickets en masse sans les avoir montrés au chef de projet, sauf s'il t'a dit de le faire.
 - Respecte les décisions de `docs/PROJET.md` §4. Pour en changer une, passe par un ticket `decision`.
 - Quand un ticket est mergé, mets à jour `docs/PROJET.md` (état actuel, feuille de route, décisions).
+- Circuit d'un ticket avec migration (`CLAUDE.md`) : dans chaque ticket `[supabase]`, rappelle les étapes local → TEST → validation de Quentin → feu vert → PROD → PR → merge, et lie le ticket front qui en dépend (« mergé après l'application en prod de #… »). Désigne toujours une base par rôle **et** identifiant (TEST `ebupazakzfbpptmlrzze`, PROD `artvpflfhvouyngzgqob`).
+- `CLAUDE.md` et `.claude/agents/*.md` ne se modifient qu'avec l'accord explicite du chef de projet, dans un ticket dédié.
 - Réponds en français.
