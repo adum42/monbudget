@@ -86,3 +86,20 @@ Le schéma `backup_v1` n'est volontairement pas reproduit sur test.
 ### Contrôle d'identité
 
 Au 02/11/2026, après #3 : empreinte md5 des catalogues de `public` (colonnes et leur ordre, types, défauts, nullabilité, contraintes, index, politiques RLS, RLS activée, triggers, fonctions, droits) **identique** sur les deux projets : `25d70b76f63c7462e37df3dfd80b865c` (189 objets).
+
+## Jeu de données de test (#21)
+
+Script : [`supabase/seed/donnees-test.sql`](seed/donnees-test.sql). Il efface puis recrée les données de **l'utilisateur de test seulement** (les autres utilisateurs ne sont pas touchés) : 8 catégories, 4 comptes (courant par défaut, livret, investissement, espèces), 6 soldes et 35 transactions sur le mois en cours et les deux précédents, dont 7 mouvements. Tout est fictif et libellé `TEST …`. Les dates suivent le mois en cours : l'écran du mois n'est jamais vide.
+
+**Garde-fous** : le script est un seul bloc `do` (tout ou rien) et s'arrête sans rien modifier si :
+- le schéma `backup_v1` existe, c'est-à-dire si la base est la **PROD** `artvpflfhvouyngzgqob` ;
+- `v_user_id` n'est pas renseigné, ou ne correspond à aucun utilisateur de la base.
+
+**Le rejouer** (quand les données de test ont été abîmées, ou après un changement de schéma) :
+
+1. Dashboard du projet **TEST « monbudget-test » `ebupazakzfbpptmlrzze`** : vérifier le nom du projet ouvert.
+2. *Authentication* → *Users* : copier l'UID de l'utilisateur de test.
+3. *SQL Editor* : coller le contenu du script, remplacer `00000000-0000-0000-0000-000000000000` de `v_user_id` par cet UID (ne pas committer l'UID), exécuter.
+4. Message attendu : « Jeu de données TEST recréé : 8 catégories, 4 comptes, 6 soldes, 35 transactions dont 7 mouvements, sur 3 mois. »
+
+Un agent peut aussi le lancer via `execute_sql` avec `project_id = ebupazakzfbpptmlrzze` (Quentin, voir les règles plus haut). Si une migration ajoute une colonne obligatoire, mettre le script à jour dans le même ticket.
