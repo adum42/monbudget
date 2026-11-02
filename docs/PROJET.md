@@ -62,9 +62,20 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction.
 
 État global : `currentUser`, `categories`, `transactions`, `comptes`, `soldes`, `currentMonth` (`AAAA-MM`), `viewAllMonths`.
 
+### Environnements
+
+| Rôle | Projet Supabase | `project_id` | Utilisé par | Données |
+|---|---|---|---|---|
+| **PROD** | « budget-app » | `artvpflfhvouyngzgqob` | `https://monbudget-lilac.vercel.app` | réelles |
+| **TEST** | « monbudget-test » | `ebupazakzfbpptmlrzze` | previews Vercel, `localhost` | fictives |
+
+- Aiguillage (#20, livré) : `choisirEnvironnement(location.hostname)` dans `index.html` renvoie `prod` pour un domaine de la liste blanche `DOMAINES_PROD` (`monbudget-lilac.vercel.app`), `test` sinon ; en test, bandeau « Environnement de TEST ».
+- Circuit d'un ticket avec migration (#22) : test local (Postgres jetable) → application sur TEST par le chef de projet → inscription et vérification par Sylvie → recette de Quentin → feu vert → application sur PROD par le chef de projet → inscription et vérification → PR → merge. Détail : `CLAUDE.md` et `supabase/README.md`.
+- Seul le chef de projet écrit sur la prod ; les agents n'y font que des lectures, plus l'inscription des migrations dans l'historique.
+
 ### Base Supabase (schéma `public`)
 
-Deux bases au schéma identique : **PROD** « budget-app » (`artvpflfhvouyngzgqob`, utilisée par l'app en ligne) et **TEST** « monbudget-test » (`ebupazakzfbpptmlrzze`, données fictives). Tant que #20 n'est pas livré, l'app et les previews Vercel utilisent la prod. La procédure complète (environnements, circuit d'un ticket) sera décrite par #22.
+Schéma identique sur PROD et TEST (empreinte des catalogues comparée après chaque migration).
 
 Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée avec une politique `ALL` « `auth.uid() = user_id` ».
 
@@ -75,13 +86,13 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 | `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. La modale de compte ne propose encore que `livret` et `investissement`, et n'utilise pas les nouvelles colonnes (#8). 3 comptes existants. |
 | `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Seule source des soldes de comptes aujourd'hui. |
 
-Migrations : fichiers dans `supabase/migrations/`. `etape1_comptes_tous_types_virements` (#3) appliquée le 02/11/2026 sur TEST puis sur PROD par le chef de projet via l'éditeur SQL du dashboard (l'outil MCP `apply_migration` est annulé automatiquement par le client), puis inscrite à la main dans `supabase_migrations.schema_migrations` (version `20261102102800` sur test, `20261102103500` sur prod). La procédure officielle d'application est à fixer par #22.
+Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués par le chef de projet dans l'éditeur SQL du dashboard, puis inscrits dans `supabase_migrations.schema_migrations` par Sylvie avec la version = préfixe du fichier, identique sur les deux bases (#22). Exception historique acceptée : `etape1_comptes_tous_types_virements` (#3), appliquée le 02/11/2026, est inscrite avec `20261102102800` sur test et `20261102103500` sur prod.
 
 ### Dette technique connue
 
 - `saveTx`, `saveCompte`, `deleteCompteFromModal` et les autres écritures n'affichent pas les erreurs Supabase. Depuis #3, la base refuse des écritures (montant ≤ 0, compte d'un autre utilisateur, suppression d'un compte qui porte des opérations, second compte par défaut…) : sans affichage, l'échec est silencieux. Traité par #6 (transactions) et #8 (comptes).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
-- Aucun test, aucune CI (#9, #25).
+- Aucun test, aucune CI (#9, #25). Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
 - Le total du patrimoine additionne les derniers soldes saisis, quelle que soit leur date.
 
 ## 4. Décisions
@@ -103,7 +114,10 @@ Migrations : fichiers dans `supabase/migrations/`. `etape1_comptes_tous_types_vi
 | 29/10/2026 | On ne supprime jamais un compte qui porte des opérations (FK `on delete restrict`) ; « supprimer » est réservé aux comptes créés par erreur ; un compte fermé sera **clôturé** (#15, #16) | garder l'historique des opérations (#3) |
 | 29/10/2026 | Chaque utilisateur est indépendant : une transaction ne référence que des comptes de son propre utilisateur, garanti en base par le trigger `transactions_verifier_comptes` ; un virement vers une autre personne est saisi par chacun (sortie chez l'un, entrée chez l'autre) | une clé étrangère ne passe pas par la RLS (#3) |
 | 29/10/2026 | `transactions.montant` en `numeric(12,2)` et strictement positif ; `comptes.solde_initial` peut être négatif (compte à découvert), seule exception à la règle des montants positifs | le sens vient du `type` ; un solde n'est pas un flux (#3) |
+| 29/10/2026 | Environnement de test séparé (option A) : projet TEST « monbudget-test » `ebupazakzfbpptmlrzze` au schéma identique à la prod, données fictives ; previews et local aiguillés sur test (#19, #20) | ne plus tester sur les données réelles |
 | 29/10/2026 | Type de compte par défaut `courant` ; le compte par défaut peut être de n'importe quel type, un seul par utilisateur ; changer de compte par défaut se fait en deux requêtes côté front (retirer l'ancien puis poser le nouveau, sinon erreur `23505`) (#8) | au plus simple (#3) |
+| 02/11/2026 | Migrations appliquées par le chef de projet dans l'éditeur SQL du dashboard (`begin; … commit;`), d'abord sur TEST puis sur PROD après validation de Quentin et feu vert ; Sylvie les inscrit dans l'historique avec la version = préfixe du fichier, identique sur les deux bases ; les agents n'utilisent plus `apply_migration` (#22, option 1) | `apply_migration` est annulé automatiquement par le client ; une seule personne écrit sur la prod |
+| 02/11/2026 | Après le sprint 1 : application automatique des migrations par GitHub Actions (`supabase db push`), sur TEST à la PR et sur PROD au merge (option 3, #32) | supprimer le geste manuel et les erreurs de version |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
