@@ -1,6 +1,6 @@
 # monbudget — dossier projet
 
-> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 29/10/2026.
+> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 02/11/2026.
 > Elle décrit l'app **telle qu'elle est réellement** (code et base vérifiés), pas telle qu'on l'imagine.
 
 ## 1. Vision
@@ -19,7 +19,7 @@ Hors périmètre (décision du 29/10/2026) : **import bancaire CSV/OFX**.
 
 | Étape | Fonctionnalité | Maquette | État |
 |---|---|---|---|
-| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | à faire |
+| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure de base livrée (#3), écrans à venir |
 | 2 | Pointage et rapprochement bancaire | `docs/maquettes/2-pointage.html` | à faire |
 | 3 | Cagnottes par thème | `docs/maquettes/4-cagnottes.html` | à faire |
 | 4 | Suivi de l'épargne mensuelle | `docs/maquettes/3-epargne.html` | à faire |
@@ -56,7 +56,7 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction.
 | Données | `loadAll`, `loadCategories`, `loadTransactions` (jointure `categories(nom,emoji)`), `loadComptes` (charge aussi `soldes`) |
 | Rendu | `renderAll`, `renderMetrics`, `renderTransactions`, `renderCategories`, `renderComptes`, `renderChartComptes`, `renderStatsKpis`, `renderCharts` |
 | Transactions | `openTxModal`, `saveTx`, `setTxType`, `setTricount`, `dupTx`, `askDeleteTx`, `deleteTxFromModal`, `resetDeleteConfirm` |
-| Comptes / soldes | `openCompteModal`, `saveCompte`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `getLastSolde`, `getPrevSolde` |
+| Comptes / soldes | `openCompteModal`, `saveCompte`, `deleteCompteFromModal`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `getLastSolde`, `getPrevSolde` |
 | Navigation | `switchTab`, `changeMonth`, `toggleViewAll` |
 | Utilitaires | `fmt` (format fr-FR 2 décimales), `txOfMonth` |
 
@@ -64,19 +64,24 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction.
 
 ### Base Supabase (schéma `public`)
 
+Deux bases au schéma identique : **PROD** « budget-app » (`artvpflfhvouyngzgqob`, utilisée par l'app en ligne) et **TEST** « monbudget-test » (`ebupazakzfbpptmlrzze`, données fictives). Tant que #20 n'est pas livré, l'app et les previews Vercel utilisent la prod. La procédure complète (environnements, circuit d'un ticket) sera décrite par #22.
+
 Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée avec une politique `ALL` « `auth.uid() = user_id` ».
 
 | Table | Colonnes métier | Remarques |
 |---|---|---|
-| `transactions` | `description`, `montant numeric` (toujours positif, le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable), `direction` ∈ {vers, depuis} (nullable), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | `compte_id` et `direction` **existent mais ne sont pas utilisés** par l'interface. Aucune transaction n'a de compte ni n'est un mouvement. |
+| `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable ; compte source d'un mouvement), `compte_dest_id` (nullable ; compte destination d'un mouvement), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Contrainte `transactions_mouvement_comptes_check` : un `mouvement` a `compte_id` et `compte_dest_id` renseignés et différents ; une entrée ou une sortie n'a pas de `compte_dest_id`. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées. Trigger `transactions_verifier_comptes` (avant insertion ou modification, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503`. Colonne `direction` **supprimée** (#3). L'interface n'utilise encore ni `compte_id` ni `compte_dest_id` (#6) ; aucune transaction n'a de compte ni n'est un mouvement. |
 | `categories` | `nom`, `type` ∈ {entrée, sortie, les deux}, `couleur`, `emoji` | |
-| `comptes` | `nom`, `type` ∈ {livret, investissement}, `banque`, `couleur` | Pas de compte courant possible, pas de solde initial. 3 comptes existants. |
-| `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. Seule source des soldes de comptes aujourd'hui. |
+| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. La modale de compte ne propose encore que `livret` et `investissement`, et n'utilise pas les nouvelles colonnes (#8). 3 comptes existants. |
+| `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Seule source des soldes de comptes aujourd'hui. |
+
+Migrations : fichiers dans `supabase/migrations/`. `etape1_comptes_tous_types_virements` (#3) appliquée le 02/11/2026 sur TEST puis sur PROD par le chef de projet via l'éditeur SQL du dashboard (l'outil MCP `apply_migration` est annulé automatiquement par le client), puis inscrite à la main dans `supabase_migrations.schema_migrations` (version `20261102102800` sur test, `20261102103500` sur prod). La procédure officielle d'application est à fixer par #22.
 
 ### Dette technique connue
 
-- `saveTx` et les autres écritures n'affichent pas les erreurs Supabase.
-- Aucun test, aucune CI.
+- `saveTx`, `saveCompte`, `deleteCompteFromModal` et les autres écritures n'affichent pas les erreurs Supabase. Depuis #3, la base refuse des écritures (montant ≤ 0, compte d'un autre utilisateur, suppression d'un compte qui porte des opérations, second compte par défaut…) : sans affichage, l'échec est silencieux. Traité par #6 (transactions) et #8 (comptes).
+- Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
+- Aucun test, aucune CI (#9, #25).
 - Le total du patrimoine additionne les derniers soldes saisis, quelle que soit leur date.
 
 ## 4. Décisions
@@ -95,6 +100,10 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 | 29/10/2026 | Compte « Compte courant » (Hello bank) = compte par défaut ; tous les comptes du chef de projet sont créés à l'étape 1 (#2) | suivre tous les comptes |
 | 29/10/2026 | On repart de zéro : chaque compte a un solde initial au 30/09/2026, les 58 transactions d'origine sont supprimées (conservées dans `backup_v1`) et le chef de projet ressaisit les opérations depuis le 01/10/2026 après #6 (#2) | données saisies d'emblée avec comptes et virements, et jeu de test réel |
 | 29/10/2026 | Les montants (soldes, solde initial) ne sont jamais écrits dans le repo ni dans les tickets | données personnelles |
+| 29/10/2026 | On ne supprime jamais un compte qui porte des opérations (FK `on delete restrict`) ; « supprimer » est réservé aux comptes créés par erreur ; un compte fermé sera **clôturé** (#15, #16) | garder l'historique des opérations (#3) |
+| 29/10/2026 | Chaque utilisateur est indépendant : une transaction ne référence que des comptes de son propre utilisateur, garanti en base par le trigger `transactions_verifier_comptes` ; un virement vers une autre personne est saisi par chacun (sortie chez l'un, entrée chez l'autre) | une clé étrangère ne passe pas par la RLS (#3) |
+| 29/10/2026 | `transactions.montant` en `numeric(12,2)` et strictement positif ; `comptes.solde_initial` peut être négatif (compte à découvert), seule exception à la règle des montants positifs | le sens vient du `type` ; un solde n'est pas un flux (#3) |
+| 29/10/2026 | Type de compte par défaut `courant` ; le compte par défaut peut être de n'importe quel type, un seul par utilisateur ; changer de compte par défaut se fait en deux requêtes côté front (retirer l'ancien puis poser le nouveau, sinon erreur `23505`) (#8) | au plus simple (#3) |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
