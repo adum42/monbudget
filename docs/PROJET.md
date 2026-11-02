@@ -30,6 +30,22 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
+Ordre de traitement du sprint 1 (fixé le 02/11/2026 ; livrés : #2, #3, #19, #20) :
+
+| Ordre | Ticket | Agent | Dépend de |
+|---|---|---|---|
+| 1 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie | liste des comptes et soldes au 30/09 fournie par le chef de projet |
+| 2 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
+| 3 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie des opérations depuis le 01/10 |
+| 4 | #21 Jeu de données fictives sur la base test et contrôle de l'aiguillage | Quentin | utilisateur de test créé par le chef de projet dans `monbudget-test` |
+| 5 | #22 Circuit d'un ticket avec environnement de test | Corentin | choix de la procédure d'application des migrations |
+| 6 | #30 Débordement horizontal à 390 px | Fabien | — |
+| 7 | #17 puis #18 Accès navigateur de Quentin, limité à l'environnement de test | Corentin | #21 |
+| 8 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | #21 |
+| 9 | #25 Tests SQL de migration rejoués en CI | Quentin | #9 |
+
+Les comptes de type `courant` créés par #4 ne doivent pas être modifiés via l'interface avant #8 (la modale compte ne propose pas ce type).
+
 ## 3. État actuel de l'application
 
 ### Écrans (onglets)
