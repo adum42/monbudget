@@ -48,6 +48,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 nav{display:flex;gap:2px;padding:12px 24px;border-bottom:1px solid var(--border);}
 .nav-btn{padding:7px 16px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;}
 .nav-btn.active{background:var(--accent-soft);color:var(--accent);}
+/* Mobile (#30) : header et onglets tiennent dans 360 px sans défilement horizontal */
+@media (max-width:480px){
+  header{padding:12px 16px;gap:12px;}
+  header .logo{flex-shrink:0;}
+  header>div:last-child{min-width:0;}
+  .user-email{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .btn-logout{flex-shrink:0;}
+  nav{padding:8px 12px;overflow-x:auto;}
+  .nav-btn{flex:1 1 auto;padding:7px 4px;font-size:12px;white-space:nowrap;}
+}
 main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .section{display:none;}.section.active{display:block;}
 
@@ -188,6 +198,19 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .chart-wrap{position:relative;height:220px;}
 .chart-wrap-tall{position:relative;height:300px;}
+/* Mobile (#30) : cartes de résumé, indicateurs et graphiques empilés sur une colonne.
+   Placé après les règles de base pour qu'elles ne l'écrasent pas. */
+@media (max-width:480px){
+  main{padding:16px;}
+  .metrics,.stats-kpis,.stats-grid{grid-template-columns:minmax(0,1fr);}
+  .metric{padding:14px 16px;}
+  .metric-value{font-size:22px;}
+  .stats-grid>.card{min-width:0;}
+  /* Ligne de transaction : Tricount, montant et badge passent sous le libellé */
+  .tx-item{flex-wrap:wrap;row-gap:8px;}
+  .tx-left{flex-basis:calc(100% - 25px);}
+  .tx-right{flex:1 1 100%;justify-content:flex-end;}
+}
 
 /* MODALE GÉNÉRIQUE */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center;padding:24px;}
