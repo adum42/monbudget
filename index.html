@@ -12,6 +12,13 @@
 *,*::before,*::after{box-sizing:inherit;margin:0;padding:0;}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;}
 
+/* BANDEAU ENVIRONNEMENT DE TEST */
+#env-banner{display:none;position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;height:24px;line-height:24px;z-index:200;background:#F59E0B;color:var(--bg);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.04em;text-align:center;pointer-events:none;}
+body.env-test #env-banner{display:block;}
+body.env-test{padding-top:24px;}
+body.env-test header{top:calc(24px + env(safe-area-inset-top,0px));}
+body.env-test #auth-screen,body.env-test #app-screen{min-height:calc(100vh - 24px);}
+
 /* AUTH */
 #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
 .auth-box{width:100%;max-width:380px;}
@@ -226,6 +233,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 </style>
 </head>
 <body>
+
+<!-- BANDEAU ENVIRONNEMENT (visible hors prod uniquement) -->
+<div id="env-banner" role="status">Environnement de TEST</div>
 
 <!-- AUTH -->
 <div id="auth-screen">
@@ -489,8 +499,23 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 </div>
 
 <script>
-const SUPABASE_URL='https://artvpflfhvouyngzgqob.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydHZwZmxmaHZvdXluZ3pncW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzM1NjEsImV4cCI6MjEwNTkwOTU2MX0.C9RRUEdN6Ze3F_bH3a0vQXDOQiN09fESLXkbgfzRRcE';
+// ── ENVIRONNEMENT (prod / test) ───────────────────────
+// Clés anon uniquement : publiques par nature, la sécurité repose sur la RLS.
+const ENVIRONNEMENTS={
+  prod:{url:'https://artvpflfhvouyngzgqob.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydHZwZmxmaHZvdXluZ3pncW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzM1NjEsImV4cCI6MjEwNTkwOTU2MX0.C9RRUEdN6Ze3F_bH3a0vQXDOQiN09fESLXkbgfzRRcE'},
+  test:{url:'https://ebupazakzfbpptmlrzze.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVidXBhemFremZicHB0bWxyenplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNzk0MDgsImV4cCI6MjEwODg1NTQwOH0.QQ7FrSr-Z2zPADASR4Up0ZHhj6ntpCUIqDmITvFw_s0'}
+};
+// Liste blanche : seuls ces domaines exacts vont sur la prod.
+const DOMAINES_PROD=['monbudget-lilac.vercel.app'];
+// Fonction pure : renvoie 'prod' si le hostname est exactement un domaine de prod, 'test' dans tous les autres cas.
+function choisirEnvironnement(hostname){
+  return (typeof hostname==='string'&&DOMAINES_PROD.includes(hostname.toLowerCase()))?'prod':'test';
+}
+const ENV=choisirEnvironnement(location.hostname);
+console.log('[monbudget] environnement : '+ENV);
+if(ENV!=='prod')document.body.classList.add('env-test');
+const SUPABASE_URL=ENVIRONNEMENTS[ENV].url;
+const SUPABASE_KEY=ENVIRONNEMENTS[ENV].key;
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let currentUser=null,categories=[],transactions=[],comptes=[],soldes=[];
