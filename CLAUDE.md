@@ -5,9 +5,21 @@ Application web de gestion de budget personnel. Le propriétaire du projet est l
 ## Stack
 
 - Un seul fichier `index.html` (HTML + CSS + JS inline, aucun build step). Un fichier JS séparé chargé par `<script src>` est acceptable s'il est validé par une décision dans `docs/PROJET.md`.
-- Supabase (projet `artvpflfhvouyngzgqob`) : Postgres + Auth + RLS. Client `@supabase/supabase-js@2` via CDN.
+- Supabase : Postgres + Auth + RLS. Client `@supabase/supabase-js@2` via CDN. Deux projets, voir *Environnements*.
 - Chart.js via CDN.
-- Déploiement automatique sur Vercel à chaque push sur `main`.
+- Déploiement automatique sur Vercel à chaque push sur `main` ; une preview Vercel par branche / PR.
+
+## Environnements
+
+| Rôle | Projet Supabase | `project_id` | Utilisé par | Données |
+|---|---|---|---|---|
+| **PROD** | « budget-app » | `artvpflfhvouyngzgqob` | `https://monbudget-lilac.vercel.app` uniquement | réelles (chef de projet) |
+| **TEST** | « monbudget-test » | `ebupazakzfbpptmlrzze` | previews Vercel, `localhost`, tout autre domaine | fictives uniquement |
+
+- **Aiguillage** (#20) : `index.html` choisit la base selon le domaine. Seul un domaine de la liste blanche `DOMAINES_PROD` va sur la prod, tout le reste va sur test et affiche le bandeau « Environnement de TEST ».
+- **Désignation** : les deux noms ne se ressemblent pas. Dans un ticket, un commentaire ou un appel d'outil, toujours désigner un projet par son **rôle et son identifiant** (« TEST `ebupazakzfbpptmlrzze` »), et passer le `project_id` explicitement à chaque appel MCP Supabase.
+- **Qui touche la prod** : seul le chef de projet écrit sur la prod (application des migrations, merge). Les agents n'y font que des lectures, plus l'inscription d'une migration dans l'historique par Sylvie.
+- Détail des projets, de l'Auth et de la procédure de migration : `supabase/README.md`.
 
 ## Sources de vérité
 
@@ -30,14 +42,19 @@ Chaque agent a un prénom : c'est ce nom qu'on utilise pour l'appeler (« Corent
 ## Circuit d'un ticket
 
 1. Le chef de projet exprime un besoin ou un bug → **Corentin** rédige le(s) ticket(s) et les assigne.
-2. **Sylvie** et/ou **Fabien** développent sur une branche `ticket-<n>-<slug>`.
-3. **Quentin** relit le diff de la PR, vérifie les critères d'acceptation et les tests, puis commente le ticket (validé / renvoyé).
-4. Le chef de projet merge. Corentin met à jour `docs/PROJET.md` si l'état de l'app a changé.
+2. **Sylvie** et/ou **Fabien** développent sur une branche `ticket-<n>-<slug>`. Une migration s'écrit dans `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql` et se teste d'abord sur un Postgres local jetable.
+3. **Quentin** relit le diff et recette **en local** (migration rejouée sur Postgres jetable, app servie en local sur TEST).
+4. **TEST** : le chef de projet applique la migration sur TEST `ebupazakzfbpptmlrzze` (éditeur SQL du dashboard, `begin; … commit;`) ; Sylvie l'inscrit dans l'historique et vérifie ; Quentin recette sur TEST (parcours connectés via la CI (#9) ou délégués au chef de projet sur la preview ; sans connexion, Quentin vérifie seulement le bandeau TEST et l'écran de connexion), puis commente le ticket (**Validé** / **Renvoyé à …**).
+5. **Feu vert** du chef de projet → il applique la **même** migration sur PROD `artvpflfhvouyngzgqob` ; Sylvie l'inscrit avec la même version et vérifie ; Quentin fait le contrôle en lecture après application.
+6. PR, puis **merge** par le chef de projet. Une migration est en prod **avant** le merge du front qui en dépend. Corentin met à jour `docs/PROJET.md` si l'état de l'app a changé.
+
+Un ticket sans migration saute les étapes 4 et 5 (recette sur la preview, donc sur TEST). Les agents n'utilisent pas l'outil `apply_migration` (annulé automatiquement par le client) : procédure détaillée dans `supabase/README.md`.
 
 ## Conventions communes
 
 - Langue : français pour l'interface, les tickets, les commits et la doc. Noms SQL en français sans accents (`comptes`, `solde_initial`).
-- Ne jamais committer de clé `service_role` ni de secret. La clé `anon` présente dans `index.html` est publique par nature, la sécurité repose sur la RLS.
+- Ne jamais committer de clé `service_role` ni de secret. Les clés `anon` présentes dans `index.html` sont publiques par nature, la sécurité repose sur la RLS.
+- Données fictives uniquement sur TEST ; aucune donnée ne circule de la prod vers test. Aucun agent ne saisit ni ne lit de mot de passe (l'utilisateur de test est dans les secrets GitHub `TEST_EMAIL` / `TEST_PASSWORD`).
 - Toute nouvelle table : colonne `user_id uuid references auth.users` + RLS activée + politiques `auth.uid() = user_id`.
 - Les transactions de type `mouvement` (virements internes) sont exclues de toutes les statistiques.
 

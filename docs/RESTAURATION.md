@@ -12,6 +12,8 @@ Le schéma `backup_v1` n'est pas exposé par l'API Supabase : l'app ne le voit p
 
 **Quelle base ?** Il existe deux projets Supabase : **PROD** « budget-app » (`artvpflfhvouyngzgqob`) et **TEST** « monbudget-test » (`ebupazakzfbpptmlrzze`, données fictives). La sauvegarde `backup_v1` et la restauration des données concernent **la prod uniquement** : vérifier le nom du projet dans le dashboard avant de lancer la moindre requête. La base test ne contient pas `backup_v1`.
 
+**Reconstruire la base test** (elle ne contient que des données fictives, rien n'y est sauvegardé) : nouveau projet Supabase, puis appliquer dans l'ordre `supabase/bootstrap/01` à `04`, puis toutes les migrations de `supabase/migrations/` selon la procédure de `supabase/README.md`, refaire la configuration Auth et l'utilisateur de test (`supabase/README.md`, section *Auth*), et recharger le jeu de données fictives de #21. Si l'identifiant du projet change, mettre à jour `index.html` (#20) et la doc.
+
 ## Restaurer le code
 
 Remettre l'ancien `index.html` sur `main` (l'historique est conservé) :
