@@ -198,6 +198,19 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .chart-wrap{position:relative;height:220px;}
 .chart-wrap-tall{position:relative;height:300px;}
+/* Mobile (#30) : cartes de résumé, indicateurs et graphiques empilés sur une colonne.
+   Placé après les règles de base pour qu'elles ne l'écrasent pas. */
+@media (max-width:480px){
+  main{padding:16px;}
+  .metrics,.stats-kpis,.stats-grid{grid-template-columns:minmax(0,1fr);}
+  .metric{padding:14px 16px;}
+  .metric-value{font-size:22px;}
+  .stats-grid>.card{min-width:0;}
+  /* Ligne de transaction : Tricount, montant et badge passent sous le libellé */
+  .tx-item{flex-wrap:wrap;row-gap:8px;}
+  .tx-left{flex-basis:calc(100% - 25px);}
+  .tx-right{flex:1 1 100%;justify-content:flex-end;}
+}
 
 /* MODALE GÉNÉRIQUE */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center;padding:24px;}
