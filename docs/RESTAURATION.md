@@ -10,6 +10,8 @@ Sauvegarde faite le 29/10/2026, avant la refonte multi-comptes.
 
 Le schéma `backup_v1` n'est pas exposé par l'API Supabase : l'app ne le voit pas et il ne gêne en rien.
 
+**Quelle base ?** Il existe deux projets Supabase : **PROD** « budget-app » (`artvpflfhvouyngzgqob`) et **TEST** « monbudget-test » (`ebupazakzfbpptmlrzze`, données fictives). La sauvegarde `backup_v1` et la restauration des données concernent **la prod uniquement** : vérifier le nom du projet dans le dashboard avant de lancer la moindre requête. La base test ne contient pas `backup_v1`.
+
 ## Restaurer le code
 
 Remettre l'ancien `index.html` sur `main` (l'historique est conservé) :
@@ -25,28 +27,38 @@ Option d'urgence, encore plus rapide : dans Vercel → *Deployments*, choisir le
 
 ## Restaurer les données
 
-À lancer dans l'éditeur SQL Supabase, **après** avoir restauré le code (l'ancien code ne connaît pas les nouvelles colonnes, mais il les ignore sans problème).
+À lancer dans l'éditeur SQL du projet **PROD** « budget-app », **après** avoir restauré le code.
+
+La requête ci-dessous fonctionne avec le schéma actuel (après #3) **sans modifier la structure** :
+- `backup_v1` contient encore la colonne `transactions.direction`, supprimée de `public` par #3 : elle n'est pas recopiée (ses valeurs étaient toutes vides) ;
+- les colonnes ajoutées par #3 (`comptes.solde_initial`, `date_solde_initial`, `par_defaut`, `plafond`, `transactions.compte_dest_id`) ne sont pas listées et prennent leur valeur par défaut (0, vide, faux, vide, vide) ;
+- les colonnes sont toujours nommées explicitement : pas de `select *`, qui dépend de l'ordre des colonnes ;
+- l'ancien code (v1) n'utilise pas `direction` et ignore les nouvelles colonnes : il fonctionne avec ce schéma.
 
 ```sql
 begin;
 -- Supprimer les tables ajoutées par la refonte si besoin (cagnottes, budgets, rapprochements…)
 -- drop table if exists public.cagnotte_mouvements, public.cagnottes, public.budgets, public.recurrences, public.rapprochements;
 
+-- Ordre imposé : les transactions d'abord (FK compte_id / compte_dest_id en restrict depuis #3).
 delete from public.transactions;
 delete from public.soldes;
 delete from public.comptes;
 delete from public.categories;
 
-insert into public.categories   (select * from backup_v1.categories);
+insert into public.categories   (id, user_id, nom, type, couleur, created_at, emoji)
+  select id, user_id, nom, type, couleur, created_at, emoji from backup_v1.categories;
 insert into public.comptes      (id, user_id, nom, type, banque, couleur, created_at)
   select id, user_id, nom, type, banque, couleur, created_at from backup_v1.comptes;
-insert into public.soldes       (select * from backup_v1.soldes);
-insert into public.transactions (id, user_id, description, montant, type, categorie_id, date, created_at, compte_id, direction, tricount, epingle, note)
-  select id, user_id, description, montant, type, categorie_id, date, created_at, compte_id, direction, tricount, epingle, note from backup_v1.transactions;
+insert into public.soldes       (id, user_id, compte_id, date, montant, note, created_at)
+  select id, user_id, compte_id, date, montant, note, created_at from backup_v1.soldes;
+-- backup_v1.transactions.direction n'est pas recopiée : la colonne n'existe plus dans public.
+insert into public.transactions (id, user_id, description, montant, type, categorie_id, date, created_at, compte_id, tricount, epingle, note)
+  select id, user_id, description, montant, type, categorie_id, date, created_at, compte_id, tricount, epingle, note from backup_v1.transactions;
 commit;
 ```
 
-Si des contraintes ajoutées par la refonte bloquent l'insertion (par exemple un `type` de compte restreint), les supprimer avant, ou restaurer seulement les tables concernées.
+Les contraintes ajoutées par #3 ne bloquent pas l'insertion : tous les montants de `backup_v1.transactions` sont strictement positifs (vérifié le 29/10/2026), aucune transaction n'a de compte (le trigger `transactions_verifier_comptes` et la contrainte des mouvements n'ont donc rien à refuser) et les types de compte `livret` / `investissement` restent autorisés. Si une contrainte ajoutée par une étape ultérieure bloque l'insertion, l'adapter ou restaurer seulement les tables concernées ; ne jamais modifier le contenu de `backup_v1`.
 
 ⚠️ Une restauration des données efface tout ce qui a été saisi depuis le 29/10/2026. Pour garder les nouvelles saisies, ne restaurer que le code.
 
