@@ -36,8 +36,10 @@ Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #
 |---|---|---|---|
 | 1 | #8 Cartes comptes : solde calculé, écart et voyant | Fabien | #5 (vue en prod) ; ticket hors label `sprint-1` à ce jour |
 | 2 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
+| 3 | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | — |
+| 4 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44 (même bloc de `renderCategories`, branches successives) |
 
-Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48, #43 intégré au sprint 1). Restent ouverts, hors label `sprint-1` : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes (nom, banque, boutons ✏️ et « Saisir un solde » sans `onclick` concaténé) fait partie de #8.
+Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48, #43 intégré au sprint 1). Restent ouverts, **intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes (nom, banque, boutons ✏️ et « Saisir un solde » sans `onclick` concaténé) fait partie de #8.
 
 La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
 
