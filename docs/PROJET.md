@@ -35,10 +35,12 @@ Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
 | 1 | #17 puis #18 Accès navigateur de Quentin, limité à l'environnement de test | Corentin | ordinateur du chef de projet allumé pour le test réel |
-| 2 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie écrit le SQL, le chef de projet l'exécute | liste des comptes et soldes au 30/09 fournie par le chef de projet |
-| 3 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie par le chef de projet des opérations depuis le 01/10 |
-| 4 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
+| 2 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
+| 3 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie écrit le SQL, le chef de projet l'exécute | liste des comptes et soldes au 30/09 fournie par le chef de projet |
+| 4 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie par le chef de projet des opérations depuis le 01/10 |
 | 5 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
+
+#5 passe avant #4 (décision du chef de projet, 03/11) : elle ne dépend de rien, alors que #4 attend la liste des comptes et soldes au 30/09.
 
 Si la charge déborde, on sort du sprint #5 en premier, puis #9.
 
