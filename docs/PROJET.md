@@ -1,6 +1,6 @@
 # monbudget — dossier projet
 
-> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 02/11/2026.
+> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 03/11/2026.
 > Elle décrit l'app **telle qu'elle est réellement** (code et base vérifiés), pas telle qu'on l'imagine.
 
 ## 1. Vision
@@ -19,7 +19,7 @@ Hors périmètre (décision du 29/10/2026) : **import bancaire CSV/OFX**.
 
 | Étape | Fonctionnalité | Maquette | État |
 |---|---|---|---|
-| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure de base livrée (#3), écrans à venir |
+| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4) et modale transaction (#6) livrés ; cartes comptes (#8) et filtre par compte (#7) à venir |
 | 2 | Pointage et rapprochement bancaire | `docs/maquettes/2-pointage.html` | à faire |
 | 3 | Cagnottes par thème | `docs/maquettes/4-cagnottes.html` | à faire |
 | 4 | Suivi de l'épargne mensuelle | `docs/maquettes/3-epargne.html` | à faire |
@@ -30,19 +30,18 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #17, #19, #20, #21, #22, #25, #30) :
+Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #4, #5, #6, #17, #18, #19, #20, #21, #22, #25, #30) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
-| 1 | #18 Accès navigateur de Quentin limité à l'environnement de test (#17 livré) | Corentin | ordinateur du chef de projet allumé pour le test réel |
-| 2 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
-| 3 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie écrit le SQL, le chef de projet l'exécute | liste des comptes et soldes au 30/09 fournie par le chef de projet |
-| 4 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie par le chef de projet des opérations depuis le 01/10 |
-| 5 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
+| 1 | #8 Cartes comptes : solde calculé, écart et voyant | Fabien | #5 (vue en prod) ; ticket hors label `sprint-1` à ce jour |
+| 2 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
 
-#5 passe avant #4 (décision du chef de projet, 03/11) : elle ne dépend de rien, alors que #4 attend la liste des comptes et soldes au 30/09.
+Bugs ouverts le 03/11, à prioriser par le chef de projet (front, `taille:S`, sans migration) : #43 échappement HTML de la liste des transactions, #44 croix ✕ des catégories, #45 date du jour calculée en UTC.
 
-Si la charge déborde, on sort du sprint #9 en premier, puis #6 en dernier recours (décision du chef de projet, 03/11 : #5 étant traité tôt, il ne sert plus de variable d'ajustement).
+La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
+
+Si la charge déborde, on sort #9 du sprint en premier (décision du chef de projet, 03/11).
 
 Les comptes de type `courant` créés par #4 ne doivent pas être modifiés via l'interface avant #8 (la modale compte ne propose pas ce type).
 
@@ -52,29 +51,37 @@ Les comptes de type `courant` créés par #4 ne doivent pas être modifiés via 
 
 | Onglet | Contenu |
 |---|---|
-| Transactions | métriques du mois, liste filtrable (type, catégorie, tri date / montant ↑↓), recherche texte (description + note), « Tout voir » (tous les mois), épingle cliquable, suivi Tricount |
-| Comptes | patrimoine total, une carte par compte avec **dernier solde saisi à la main** et évolution, graphique d'évolution |
+| Transactions | métriques du mois (hors mouvements), boutons « + Entrée », « − Sortie » et « ⇄ Mouvement entre comptes », liste filtrable (type dont « Mouvements », catégorie, tri date / montant ↑↓), recherche texte (description + note), « Tout voir » (tous les mois), épingle cliquable, suivi Tricount ; nom du compte sous la description (« Depuis → Vers » pour un mouvement) ; les mouvements sont listés avec un badge « Mouvement » (#6) |
+| Comptes | patrimoine total, une carte par compte avec **dernier solde saisi à la main** et évolution, graphique d'évolution. Le solde calculé de `v_soldes_comptes` n'est pas encore affiché (#8) |
 | Catégories | CRUD des catégories avec sélecteur d'emoji |
-| Statistiques | 3 KPIs (sorties, entrées, taux d'épargne vs mois précédent), barres horizontales par catégorie, évolution 6 mois, top 5 catégories |
+| Statistiques | 3 KPIs (sorties, entrées, taux d'épargne vs mois précédent), barres horizontales par catégorie, évolution 6 mois, top 5 catégories (mouvements exclus partout) |
 
 Sélecteur de mois en en-tête. Authentification Supabase (connexion / inscription).
 
-### Modale transaction
+### Modale transaction (#6)
 
-Champs : description, montant, date, type (**Entrée / Sortie uniquement**, le type `mouvement` n'est pas proposé), catégorie, Tricount (`non` / `oui` / `oui validé`), note, épinglé (vrai par défaut).
+Champs : description, montant, date, type (**Entrée / Sortie / Mouvement** ; les trois boutons de type ne s'affichent qu'en modification, une création part du bouton choisi dans l'onglet), compte, catégorie, Tricount (`non` / `oui` / `oui validé`), note, épinglé (vrai par défaut).
+
+- **Entrée / sortie** : liste « Compte » pré-remplie avec le compte par défaut. Une nouvelle transaction doit avoir un compte ; une ancienne transaction sans compte reste modifiable avec « Aucun compte ».
+- **Mouvement** : listes « Depuis » (pré-remplie avec le compte par défaut) et « Vers » ; catégorie et Tricount masqués ; enregistré sans catégorie et avec Tricount `non`. Passer d'un mouvement à une entrée ou une sortie reprend « Depuis » comme compte et vide `compte_dest_id`.
+- **Validation avant envoi** : description, montant (vide, illisible, ≤ 0, < 0,01 ou ≥ 10^10 refusés), date, compte, « Depuis » ≠ « Vers ». Rien n'est envoyé tant qu'une règle échoue.
+- **Erreurs** : toute erreur Supabase est affichée en haut de la modale avec son code (`messageErreurSupabase`), la modale reste ouverte. Les erreurs de suppression, d'épingle et de Tricount sont aussi affichées.
+
 Actions : enregistrer, dupliquer (date du jour), supprimer avec confirmation en 2 temps.
-Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction.
+Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La description reçoit le focus 100 ms après l'ouverture.
 
 ### Organisation du code (`index.html`)
 
 | Bloc | Fonctions principales |
 |---|---|
-| Données | `loadAll`, `loadCategories`, `loadTransactions` (jointure `categories(nom,emoji)`), `loadComptes` (charge aussi `soldes`) |
+| Données | `loadAll`, `loadCategories`, `loadTransactions` (jointure `categories(nom,emoji)` ; en cas d'erreur, message dans la liste via `erreurChargementTx`), `loadComptes` (charge aussi `soldes`) |
 | Rendu | `renderAll`, `renderMetrics`, `renderTransactions`, `renderCategories`, `renderComptes`, `renderChartComptes`, `renderStatsKpis`, `renderCharts` |
-| Transactions | `openTxModal`, `saveTx`, `setTxType`, `setTricount`, `dupTx`, `askDeleteTx`, `deleteTxFromModal`, `resetDeleteConfirm` |
+| Transactions : fonctions pures (#6) | bloc « FONCTIONS PURES (#6) » : `lireMontant`, `compteParDefaut`, `validerSaisieTx`, `construireLigneTx`, `messageErreurSupabase`, `libelleCompteTx`, constante `MONTANT_MAX`. Sans DOM ni réseau, testées par `tests/front/` |
+| Transactions : modale | `openTxModal` → `ouvrirModaleTx`, `lireSaisieTx`, `saveTx`, `setTxType`, `setTricount`, `dupTx`, `askDeleteTx`, `deleteTxFromModal`, `resetDeleteConfirm`, `afficherErreurTx`, `effacerErreurTx`, `optionsComptes` |
 | Comptes / soldes | `openCompteModal`, `saveCompte`, `deleteCompteFromModal`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `getLastSolde`, `getPrevSolde` |
 | Navigation | `switchTab`, `changeMonth`, `toggleViewAll` |
-| Utilitaires | `fmt` (format fr-FR 2 décimales), `txOfMonth` |
+| Environnement | `choisirEnvironnement`, `ENV`, `DOMAINES_PROD` (#20) |
+| Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML ; pas encore utilisé partout, #43), `txOfMonth` |
 
 État global : `currentUser`, `categories`, `transactions`, `comptes`, `soldes`, `currentMonth` (`AAAA-MM`), `viewAllMonths`.
 
@@ -98,23 +105,42 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 
 | Table | Colonnes métier | Remarques |
 |---|---|---|
-| `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable ; compte source d'un mouvement), `compte_dest_id` (nullable ; compte destination d'un mouvement), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Contrainte `transactions_mouvement_comptes_check` : un `mouvement` a `compte_id` et `compte_dest_id` renseignés et différents ; une entrée ou une sortie n'a pas de `compte_dest_id`. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées. Trigger `transactions_verifier_comptes` (avant insertion ou modification, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503`. Colonne `direction` **supprimée** (#3). L'interface n'utilise encore ni `compte_id` ni `compte_dest_id` (#6) ; aucune transaction n'a de compte ni n'est un mouvement. |
+| `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable ; compte source d'un mouvement), `compte_dest_id` (nullable ; compte destination d'un mouvement), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Contrainte `transactions_mouvement_comptes_check` : un `mouvement` a `compte_id` et `compte_dest_id` renseignés et différents ; une entrée ou une sortie n'a pas de `compte_dest_id`. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées. Trigger `transactions_verifier_comptes` (avant insertion ou modification, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503`. Colonne `direction` **supprimée** (#3). Utilisés par l'interface depuis #6. En prod, les 58 transactions d'origine ont été purgées le 03/11 (#4, copie dans `backup_v1.transactions`). |
 | `categories` | `nom`, `type` ∈ {entrée, sortie, les deux}, `couleur`, `emoji` | |
-| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. La modale de compte ne propose encore que `livret` et `investissement`, et n'utilise pas les nouvelles colonnes (#8). 3 comptes existants. |
-| `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Seule source des soldes de comptes aujourd'hui. |
+| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. La modale de compte ne propose encore que `livret` et `investissement`, et n'utilise pas les nouvelles colonnes (#8). En prod (#4, 03/11) : **7 comptes** avec leur solde initial au soir du 30/09/2026 (3 `courant` dont le compte par défaut, 3 `livret`, 1 `investissement`), `plafond` vide et couleur par défaut ; les 3 anciens comptes et leurs 5 soldes banque ont été supprimés. |
+| `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Soldes banque saisis à la main (relevés). |
+
+Vue `v_soldes_comptes` (#5, migration `202611031145_vue_soldes_comptes.sql`, en prod le 03/11) : une ligne par compte de l'utilisateur, `security_invoker = on` (soumise à la RLS de l'utilisateur qui l'interroge).
+
+| Colonne | Contenu |
+|---|---|
+| `compte_id`, `user_id`, `nom`, `type`, `solde_initial`, `date_solde_initial` | repris du compte |
+| `solde_calcule` | solde initial + entrées − sorties − mouvements sortants + mouvements entrants, pour les transactions datées à partir de `date_solde_initial` (incluse) |
+| `dernier_solde_banque`, `date_dernier_solde_banque` | dernière ligne de `soldes` du compte |
+| `solde_calcule_a_date_banque` | solde calculé arrêté à la date du dernier solde banque (incluse) ; `null` si ce relevé est antérieur à `date_solde_initial` |
+| `ecart` | `dernier_solde_banque − solde_calcule_a_date_banque` (même règle du `null`) |
+| `nb_jours_depuis_releve` | jours écoulés depuis le dernier relevé, calculé en UTC (accepté le 03/11) |
+
+Elle n'est pas encore lue par l'interface : affichage prévu par #8 (`sb.from('v_soldes_comptes').select('*')`).
 
 Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués par le chef de projet dans l'éditeur SQL du dashboard, puis inscrits dans `supabase_migrations.schema_migrations` par Sylvie avec la version = préfixe du fichier, identique sur les deux bases (#22). Exception historique acceptée : `etape1_comptes_tous_types_virements` (#3), appliquée le 02/11/2026, est inscrite avec `20261102102800` sur test et `20261102103500` sur prod.
 
 ### Tests et CI (#25, livré le 03/11/2026)
 
-- `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (80 cas : #3 et non-régression des requêtes de `index.html`). Mode d'emploi : `tests/sql/README.md`.
+- `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (116 cas au 03/11 : #3, #5 et non-régression des requêtes de `index.html`). Mode d'emploi : `tests/sql/README.md`.
 - Chaque nouveau ticket de base ajoute son fichier `tests/sql/cas/ticketNN_<sujet>.sql` ; chaque nouvelle requête `sb.from(...)` du front est ajoutée à `cas/front_non_regression.sql`.
+- `tests/front/ticket06_fonctions_tx.test.js` (#6) : tests unitaires Node, sans dépendance, des fonctions pures de la modale transaction, extraites telles quelles de `index.html` (`node tests/front/ticket06_fonctions_tx.test.js`). Pas encore lancés en CI (prévu dans #9).
 - GitHub Actions `.github/workflows/tests.yml`, job `tests-sql` (Postgres 17, sans secret) à chaque PR et push sur `main`.
 - `main` est protégée (03/11/2026) : merge uniquement par PR, avec le check `tests-sql` vert.
 
 ### Dette technique connue
 
-- `saveTx`, `saveCompte`, `deleteCompteFromModal` et les autres écritures n'affichent pas les erreurs Supabase. Depuis #3, la base refuse des écritures (montant ≤ 0, compte d'un autre utilisateur, suppression d'un compte qui porte des opérations, second compte par défaut…) : sans affichage, l'échec est silencieux. Traité par #6 (transactions) et #8 (comptes).
+- Erreurs Supabase non affichées : réglé pour les transactions par #6. Restent silencieuses les écritures des comptes (`saveCompte`, `deleteCompteFromModal` : #8), des catégories (`saveCat`, `deleteCatFromModal` : suppression traitée par #44) et des soldes banque (`saveSoldeEntry`, `deleteSoldeEntry` : pas de ticket).
+- Textes saisis insérés sans échappement HTML dans la liste des transactions (#43) ; même défaut dans les catégories, les cartes comptes, l'historique des soldes et le top 5 (hors périmètre de #43).
+- « Date du jour » et mois courant calculés en UTC : entre minuit et 1–2 h (Paris), la veille est proposée (#45).
+- Erreur de chargement des transactions : la liste l'affiche, mais les métriques gardent les données précédentes (non bloquant, pas de ticket).
+- Aucune icône déclarée : 404 sur `/favicon.ico` dans la console (cosmétique).
+- Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
 - Pas encore de tests navigateur (Playwright, #9). Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
 - Le total du patrimoine additionne les derniers soldes saisis, quelle que soit leur date.
@@ -144,7 +170,13 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 | 02/11/2026 | Après le sprint 1 : application automatique des migrations par GitHub Actions (`supabase db push`), sur TEST à la PR et sur PROD au merge (option 3, #32) | supprimer le geste manuel et les erreurs de version |
 | 03/11/2026 | Protection de `main` : merge uniquement par PR, check `tests-sql` obligatoire (sans approbation requise, contournement admin possible en urgence) | une PR qui casse une migration ou une requête du front ne peut plus être mergée par erreur |
 | 03/11/2026 | Accès navigateur de Quentin permanent mais limité à TEST : previews et `localhost` seulement, contrôle du bandeau « Environnement de TEST » avant toute action, prod interdite même en lecture (contrôle de la prod en SQL lecture seule uniquement) ; ses données de test sont préfixées `TEST QA` (#18) | tester l'app réellement sans jamais toucher aux données réelles, et sans abîmer le jeu de données de #21 |
-| 03/11/2026 | Sprint 1 : #5 traité avant #4 ; si la charge déborde, on sort #9 en premier, puis #6 en dernier recours | #5 ne dépend de rien alors que #4 attend la liste des comptes au 30/09 ; #6 permet la ressaisie des opérations depuis le 01/10 |
+| 03/11/2026 | Sprint 1 : #5 traité avant #4 ; si la charge déborde, on sort #9 en premier | #5 ne dépend de rien alors que #4 attend la liste des comptes au 30/09 |
+| 03/11/2026 | Solde initial de chaque compte = solde **au soir du 30/09/2026** ; seules les transactions datées **à partir du 01/10/2026** sont saisies | sinon double comptage dans `v_soldes_comptes` |
+| 03/11/2026 | `nb_jours_depuis_releve` de `v_soldes_comptes` reste calculé en UTC | écart d'au plus un jour, sans enjeu |
+| 03/11/2026 | Comptes de prod (#4) : 3 comptes `courant`, dont le compte par défaut ; plafonds et couleurs non renseignés, ajoutés par le chef de projet après #8, qui doit proposer plafond et couleur pour tous les types ; ne pas modifier un compte depuis l'app avant #8 | la modale compte actuelle ne connaît ni le type `courant` ni le plafond |
+| 03/11/2026 | Nouvelle transaction : compte obligatoire ; une ancienne transaction sans compte reste modifiable avec « Aucun compte » (#6) | toutes les nouvelles opérations alimentent le solde calculé, sans bloquer l'historique |
+| 03/11/2026 | Les mouvements restent **visibles dans la liste** (badge « Mouvement », filtre « Mouvements ») et toujours **exclus des métriques et des statistiques** (#6) | voir les virements sans fausser le budget |
+| 03/11/2026 | Les soldes des comptes suivent les opérations (entrée = crédit, sortie = débit, mouvement = débit de « Depuis » et crédit de « Vers ») pour voir l'écart avec le solde réel : calcul par `v_soldes_comptes` (#5), affichage par #8, pas de nouveau ticket | besoin déjà couvert |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 

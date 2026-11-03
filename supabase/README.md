@@ -26,11 +26,11 @@ Aucun agent ne saisit ni ne lit de mot de passe.
 > **Décision du chef de projet du 02/11/2026 (#22, option 1).** L'outil MCP `apply_migration` n'est pas utilisé : le client annule automatiquement sa confirmation en 0,5 s, rien n'est exécuté. Le **chef de projet applique** chaque migration dans l'éditeur SQL du dashboard ; **Sylvie l'inscrit** dans l'historique avec une **version identique sur les deux bases, égale au préfixe `AAAAMMJJHHMM` du fichier**. Personne d'autre que le chef de projet n'écrit sur la prod. Évolution prévue après le sprint 1 : application automatique par GitHub Actions (#32).
 
 1. **Écrire** (Sylvie) la migration dans `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`. `<nom>` est le nom de migration (snake_case, explicite : `etape1_comptes_tous_types_virements`) ; `<AAAAMMJJHHMM>` est sa version, unique et croissante.
-2. **Tester en local** (Sylvie, obligatoire) : sur un Postgres jetable, rejouer toutes les migrations de `supabase/migrations/` dans l'ordre des noms de fichiers, puis la nouvelle, avec des cas qui doivent réussir et des cas qui doivent échouer (harnais `tests/sql/` de #25 quand il sera livré). **Quentin** valide (relecture du diff + rejeu local).
+2. **Tester en local** (Sylvie, obligatoire) : sur un Postgres jetable, rejouer toutes les migrations de `supabase/migrations/` dans l'ordre des noms de fichiers, puis la nouvelle, avec des cas qui doivent réussir et des cas qui doivent échouer (harnais `tests/sql/` de #25 : `tests/sql/run.sh`, nouveau fichier `tests/sql/cas/ticketNN_<sujet>.sql`). **Quentin** valide (relecture du diff + rejeu local).
 3. **Appliquer sur TEST** `ebupazakzfbpptmlrzze` (chef de projet) : ouvrir l'éditeur SQL du projet « monbudget-test », vérifier le nom du projet, coller le contenu **exact** du fichier **encadré par `begin;` … `commit;`** (l'éditeur ne fait pas de transaction automatique : sans cela, une erreur au milieu laisse la base à moitié migrée), exécuter.
 4. **Inscrire et vérifier sur TEST** (Sylvie) : inscription dans l'historique (requête ci-dessous), structure lue dans les catalogues, `get_advisors` sécurité et performance, commentaire du ticket. **Quentin** revérifie sur TEST (écritures uniquement en transaction annulée ou sur des données préfixées `TEST` supprimées ensuite ; parcours connectés via la CI (#9) ou délégués au chef de projet sur la preview ; sans connexion, Quentin vérifie seulement le bandeau TEST et l'écran de connexion), puis commente **Validé** ou **Renvoyé**.
 5. **Feu vert** du chef de projet, puis **appliquer sur PROD** `artvpflfhvouyngzgqob` : même geste qu'à l'étape 3 dans l'éditeur SQL du projet « budget-app », avec le **même fichier, sans aucune modification**. Si une sauvegarde est requise (migration qui transforme des données), le chef de projet l'exécute sur prod juste avant (voir `docs/RESTAURATION.md`).
-6. **Inscrire et vérifier sur PROD** (Sylvie) : inscription avec **la même version et le même nom** qu'en test, `list_migrations` identique sur les deux projets (aux écarts historiques près, voir plus bas), empreinte des catalogues de `public` identique, `get_advisors` sur prod. **Quentin** fait le même contrôle, en lecture seule.
+6. **Inscrire et vérifier sur PROD** (Sylvie) : inscription avec **la même version et le même nom** qu'en test, `list_migrations` identique sur les deux projets (aux écarts historiques près, voir plus bas), empreinte des catalogues de `public` identique (requête [`empreinte_public.sql`](empreinte_public.sql), voir *Contrôle d'identité*), `get_advisors` sur prod. **Quentin** fait le même contrôle, en lecture seule.
 7. **PR, puis merge** par le chef de projet. Une migration est en prod **avant** le merge du front qui en dépend.
 
 ### Inscription dans l'historique
@@ -74,6 +74,7 @@ Le projet test a été créé vide le 29/10/2026 (#19), aligné sur la prod d'al
 | 3 | `add_epingle_to_transactions` | `supabase/bootstrap/03_add_epingle_to_transactions.sql` | SQL prod sans le `update … set epingle = true` |
 | 4 | `add_note_to_transactions` | `supabase/bootstrap/04_add_note_to_transactions.sql` | SQL prod identique |
 | 5 | `etape1_comptes_tous_types_virements` | `supabase/migrations/202610291400_etape1_comptes_tous_types_virements.sql` | #3 : appliquée sur test le 02/11/2026 (version `20261102102800`), puis sur prod (version `20261102103500`) |
+| 6 | `vue_soldes_comptes` | `supabase/migrations/202611031145_vue_soldes_comptes.sql` | #5 : appliquée sur test puis sur prod le 03/11/2026, inscrite avec la version `202611031145` sur les deux bases |
 
 Le schéma `backup_v1` n'est volontairement pas reproduit sur test.
 
@@ -85,7 +86,15 @@ Le schéma `backup_v1` n'est volontairement pas reproduit sur test.
 
 ### Contrôle d'identité
 
-Au 02/11/2026, après #3 : empreinte md5 des catalogues de `public` (colonnes et leur ordre, types, défauts, nullabilité, contraintes, index, politiques RLS, RLS activée, triggers, fonctions, droits) **identique** sur les deux projets : `25d70b76f63c7462e37df3dfd80b865c` (189 objets).
+Requête versionnée : [`supabase/empreinte_public.sql`](empreinte_public.sql). Lecture seule des catalogues (aucune donnée de table) ; à lancer sur chaque base avec le `project_id` explicite. Elle donne une empreinte md5 par famille d'objets du schéma `public` (colonnes et leur ordre, types, défauts, nullabilité, contraintes, index, politiques RLS, RLS activée, droits, triggers, fonctions, commentaires, séquences et vues, définition des vues) et une ligne `TOTAL_public` qui doit être **identique** sur TEST et PROD. En cas d'écart, comparer famille par famille. Les familles `extensions` et `schemas` sont affichées pour information, hors total : `schemas` diffère normalement (le schéma `backup_v1` n'existe que sur prod).
+
+| Date | Après | `TOTAL_public` (TEST = PROD) | Objets | Requête |
+|---|---|---|---|---|
+| 03/11/2026 | #5 | `f4838e4be7525645aad5f0b450a43d2b` | 233 | `empreinte_public.sql` (référence pour les prochaines comparaisons) |
+| 03/11/2026 | #5 | `f93b32579316a470ebbd3e28b0718402` | 233 | requête de recette de Quentin, non versionnée, non reproductible à l'identique |
+| 02/11/2026 | #3 | `25d70b76f63c7462e37df3dfd80b865c` | 189 | ancienne requête, sans la famille `def_vues` |
+
+Les empreintes ne se comparent qu'entre résultats d'une **même** requête. Si la requête évolue (nouvelle famille, autre format), la modifier dans une PR et noter la nouvelle référence dans ce tableau.
 
 ## Jeu de données de test (#21)
 
