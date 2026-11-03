@@ -571,7 +571,7 @@ const SUPABASE_KEY=ENVIRONNEMENTS[ENV].key;
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let currentUser=null,categories=[],transactions=[],comptes=[],soldes=[];
-let currentMonth=new Date().toISOString().slice(0,7);
+let currentMonth=dateLocaleISO().slice(0,7);
 let chartCat=null,chartMonths=null,chartComptes=null;
 let currentTricount='non';
 let viewAllMonths=false;
@@ -705,6 +705,14 @@ function libelleCompteTx(tx,listeComptes){
   return tx.compte_id?nom(tx.compte_id):'';
 }
 
+// ── DATE DU JOUR : FONCTION PURE (#45) ────────────────
+// Date au format AAAA-MM-JJ dans le fuseau du navigateur (et non en UTC comme toISOString,
+// qui donne la veille entre minuit et 1 h en hiver, 2 h en été, à Paris).
+function dateLocaleISO(d=new Date()){
+  const deux=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${deux(d.getMonth()+1)}-${deux(d.getDate())}`;
+}
+
 // ── MODAL TX ──────────────────────────────────────────
 let editingTxId=null;
 let currentTxType='entrée';
@@ -740,7 +748,7 @@ function ouvrirModaleTx(tx,mode,defaultType){
   else{const t=TITRES_TX[currentTxType]||TITRES_TX['entrée'];titre.textContent=t.texte;titre.style.color=t.couleur;}
   document.getElementById('modal-tx-desc').value=tx?tx.description:'';
   document.getElementById('modal-tx-amount').value=tx?tx.montant:'';
-  document.getElementById('modal-tx-date').value=(tx&&mode==='edition')?tx.date:new Date().toISOString().split('T')[0];
+  document.getElementById('modal-tx-date').value=(tx&&mode==='edition')?tx.date:dateLocaleISO();
   document.getElementById('modal-tx-note').value=tx?tx.note||'':'';
   document.getElementById('tx-type-toggle-row').style.display=mode==='edition'?'flex':'none';
   // Comptes : liste « Compte » pour une entrée / sortie, « Depuis » / « Vers » pour un mouvement
@@ -930,7 +938,7 @@ function openSoldeModal(compteId,compteName){
   document.getElementById('solde-modal-title').textContent='💰 '+compteName;
   document.getElementById('modal-solde-montant').value='';
   document.getElementById('modal-solde-note').value='';
-  document.getElementById('modal-solde-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('modal-solde-date').value=dateLocaleISO();
   renderSoldeHistory(compteId);
   document.getElementById('solde-modal').classList.add('open');
   setTimeout(()=>document.getElementById('modal-solde-montant').focus(),100);
