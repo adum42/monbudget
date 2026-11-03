@@ -90,6 +90,7 @@ cas('total : liste absente -> 0',()=>assert.strictEqual(f.totalPatrimoine(undefi
 cas('total : somme des soldes calculés (maquette)',()=>assert.strictEqual(f.totalPatrimoine([{solde_calcule:1512.4},{solde_calcule:333.77},{solde_calcule:40}]),1886.17));
 cas('total : 0,1 + 0,2 = 0,3 exactement',()=>assert.strictEqual(f.totalPatrimoine([{solde_calcule:0.1},{solde_calcule:0.2}]),0.3));
 cas('total : dix fois 0,1 = 1 exactement',()=>assert.strictEqual(f.totalPatrimoine(Array(10).fill({solde_calcule:0.1})),1));
+cas('total : 1,15 + 0,29 = 1,44 exactement (pas d\'addition en flottants)',()=>assert.strictEqual(f.totalPatrimoine([{solde_calcule:1.15},{solde_calcule:0.29}]),1.44));
 cas('total : compte à découvert soustrait',()=>assert.strictEqual(f.totalPatrimoine([{solde_calcule:100},{solde_calcule:-35.5}]),64.5));
 cas('total : soldes en chaînes (numeric) additionnés',()=>assert.strictEqual(f.totalPatrimoine([{solde_calcule:'10.10'},{solde_calcule:'20.20'}]),30.3));
 cas('total : solde null ignoré',()=>assert.strictEqual(f.totalPatrimoine([{solde_calcule:null},{solde_calcule:5}]),5));
