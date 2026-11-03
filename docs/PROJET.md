@@ -30,16 +30,15 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 02/11/2026 ; livrés : #2, #3, #19, #20, #21, #22, #30) :
+Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #19, #20, #21, #22, #25, #30) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
-| 1 | #25 Tests SQL de migration rejoués en CI | Quentin | — (#3 livré) ; crée `.github/workflows/tests.yml`, #9 y ajoutera son job ; jeu de données : `supabase/seed/donnees-test.sql` (#21) |
-| 2 | #17 puis #18 Accès navigateur de Quentin, limité à l'environnement de test | Corentin | ordinateur du chef de projet allumé pour le test réel |
-| 3 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie écrit le SQL, le chef de projet l'exécute | liste des comptes et soldes au 30/09 fournie par le chef de projet |
-| 4 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie par le chef de projet des opérations depuis le 01/10 |
-| 5 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
-| 6 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` confirmés par le chef de projet |
+| 1 | #17 puis #18 Accès navigateur de Quentin, limité à l'environnement de test | Corentin | ordinateur du chef de projet allumé pour le test réel |
+| 2 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie écrit le SQL, le chef de projet l'exécute | liste des comptes et soldes au 30/09 fournie par le chef de projet |
+| 3 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie par le chef de projet des opérations depuis le 01/10 |
+| 4 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
+| 5 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
 
 Si la charge déborde, on sort du sprint #5 en premier, puis #9.
 
@@ -85,7 +84,7 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction.
 | **TEST** | « monbudget-test » | `ebupazakzfbpptmlrzze` | previews Vercel, `localhost` | fictives |
 
 - Aiguillage (#20, livré) : `choisirEnvironnement(location.hostname)` dans `index.html` renvoie `prod` pour un domaine de la liste blanche `DOMAINES_PROD` (`monbudget-lilac.vercel.app`), `test` sinon ; en test, bandeau « Environnement de TEST ».
-- Circuit d'un ticket avec migration (#22) : test local (Postgres jetable) → application sur TEST par le chef de projet → inscription et vérification par Sylvie → recette de Quentin → feu vert → application sur PROD par le chef de projet → inscription et vérification → PR → merge. Détail : `CLAUDE.md` et `supabase/README.md`.
+- Circuit d'un ticket avec migration (#22) : test local (Postgres jetable, `tests/sql/run.sh`) → application sur TEST par le chef de projet → inscription et vérification par Sylvie → recette de Quentin → feu vert → application sur PROD par le chef de projet → inscription et vérification → PR → merge. Détail : `CLAUDE.md` et `supabase/README.md`.
 - Seul le chef de projet écrit sur la prod ; les agents n'y font que des lectures, plus l'inscription des migrations dans l'historique.
 
 ### Base Supabase (schéma `public`)
@@ -103,11 +102,18 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 
 Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués par le chef de projet dans l'éditeur SQL du dashboard, puis inscrits dans `supabase_migrations.schema_migrations` par Sylvie avec la version = préfixe du fichier, identique sur les deux bases (#22). Exception historique acceptée : `etape1_comptes_tous_types_virements` (#3), appliquée le 02/11/2026, est inscrite avec `20261102102800` sur test et `20261102103500` sur prod.
 
+### Tests et CI (#25, livré le 03/11/2026)
+
+- `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (80 cas : #3 et non-régression des requêtes de `index.html`). Mode d'emploi : `tests/sql/README.md`.
+- Chaque nouveau ticket de base ajoute son fichier `tests/sql/cas/ticketNN_<sujet>.sql` ; chaque nouvelle requête `sb.from(...)` du front est ajoutée à `cas/front_non_regression.sql`.
+- GitHub Actions `.github/workflows/tests.yml`, job `tests-sql` (Postgres 17, sans secret) à chaque PR et push sur `main`.
+- `main` est protégée (03/11/2026) : merge uniquement par PR, avec le check `tests-sql` vert.
+
 ### Dette technique connue
 
 - `saveTx`, `saveCompte`, `deleteCompteFromModal` et les autres écritures n'affichent pas les erreurs Supabase. Depuis #3, la base refuse des écritures (montant ≤ 0, compte d'un autre utilisateur, suppression d'un compte qui porte des opérations, second compte par défaut…) : sans affichage, l'échec est silencieux. Traité par #6 (transactions) et #8 (comptes).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
-- Aucun test, aucune CI (#9, #25). Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
+- Pas encore de tests navigateur (Playwright, #9). Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
 - Le total du patrimoine additionne les derniers soldes saisis, quelle que soit leur date.
 
 ## 4. Décisions
@@ -133,6 +139,7 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 | 29/10/2026 | Type de compte par défaut `courant` ; le compte par défaut peut être de n'importe quel type, un seul par utilisateur ; changer de compte par défaut se fait en deux requêtes côté front (retirer l'ancien puis poser le nouveau, sinon erreur `23505`) (#8) | au plus simple (#3) |
 | 02/11/2026 | Migrations appliquées par le chef de projet dans l'éditeur SQL du dashboard (`begin; … commit;`), d'abord sur TEST puis sur PROD après validation de Quentin et feu vert ; Sylvie les inscrit dans l'historique avec la version = préfixe du fichier, identique sur les deux bases ; les agents n'utilisent plus `apply_migration` (#22, option 1) | `apply_migration` est annulé automatiquement par le client ; une seule personne écrit sur la prod |
 | 02/11/2026 | Après le sprint 1 : application automatique des migrations par GitHub Actions (`supabase db push`), sur TEST à la PR et sur PROD au merge (option 3, #32) | supprimer le geste manuel et les erreurs de version |
+| 03/11/2026 | Protection de `main` : merge uniquement par PR, check `tests-sql` obligatoire (sans approbation requise, contournement admin possible en urgence) | une PR qui casse une migration ou une requête du front ne peut plus être mergée par erreur |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
