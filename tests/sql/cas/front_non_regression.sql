@@ -29,7 +29,7 @@ select qa.cas('saveTx update d''une tx existante (l.655)', 'authenticated', :A,
      where id=(select id from public.transactions where description='tx 5')$q$);
 select qa.cas('saveTx update : sortie -> entrée', 'authenticated', :A,
   $q$update public.transactions set type='entrée' where id=(select id from public.transactions where description='tx 6')$q$);
-select qa.cas('saveTx montant négatif : refusé (erreur non affichée par le front, voir #6)', 'authenticated', :A,
+select qa.cas('saveTx montant négatif : refusé (message affiché par le front depuis #6)', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,categorie_id,date,tricount,epingle,note)
      values ('aaaaaaaa-0000-0000-0000-000000000001','x',-12,'sortie',null,'2026-10-01','non',true,null)$q$, '23514');
 select qa.cas('saveTx montant 1e10 : refusé (dépassement)', 'authenticated', :A,
@@ -37,6 +37,25 @@ select qa.cas('saveTx montant 1e10 : refusé (dépassement)', 'authenticated', :
      values ('aaaaaaaa-0000-0000-0000-000000000001','x',1e10,'sortie',null,'2026-10-01','non',true,null)$q$, '22003');
 select qa.cas('saveTx update vers montant négatif : refusé', 'authenticated', :A,
   $q$update public.transactions set montant=-3 where id=(select id from public.transactions where description='tx 7')$q$, '23514');
+-- saveTx() depuis #6 : la ligne envoyée porte compte_id (+ compte_dest_id pour un mouvement)
+select qa.cas('#6 saveTx insert sortie sur un compte', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id,categorie_id,tricount,epingle,note)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','Courses #6',12.5,'sortie','2026-10-03','10000000-0000-0000-0000-00000000000a',null,'c0000000-0000-0000-0000-000000000001','non',true,null)$q$);
+select qa.cas('#6 saveTx insert mouvement Livret A -> Livret DD (sans catégorie)', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id,categorie_id,tricount,epingle,note)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','Mouvement #6',100,'mouvement','2026-10-04','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a',null,'non',true,null)$q$);
+select qa.cas('#6 saveTx mouvement même compte Depuis/Vers : refusé', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id,categorie_id,tricount,epingle,note)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-10-04','10000000-0000-0000-0000-00000000000a','10000000-0000-0000-0000-00000000000a',null,'non',true,null)$q$, '23514');
+select qa.cas('#6 saveTx update mouvement -> sortie (compte_dest_id remis à null)', 'authenticated', :A,
+  $q$update public.transactions set description='Mouvement #6 devenu sortie',montant=100,type='sortie',date='2026-10-04',compte_id='10000000-0000-0000-0000-00000000000a',compte_dest_id=null,categorie_id=null,tricount='non',epingle=true,note=null
+     where description='Mouvement #6'$q$);
+select qa.cas('#6 saveTx update sortie -> mouvement', 'authenticated', :A,
+  $q$update public.transactions set type='mouvement',compte_id='10000000-0000-0000-0000-00000000000a',compte_dest_id='30000000-0000-0000-0000-00000000000a',categorie_id=null,tricount='non'
+     where description='Mouvement #6 devenu sortie'$q$);
+select qa.cas('#6 saveTx update ancienne tx en gardant « Aucun compte »', 'authenticated', :A,
+  $q$update public.transactions set description='tx 11 modif',montant=3,type='sortie',date='2026-09-11',compte_id=null,compte_dest_id=null,categorie_id=null,tricount='non',epingle=false,note=null
+     where description='tx 11'$q$);
 select qa.cas('Épingler depuis la liste (l.965)', 'authenticated', :A,
   $q$update public.transactions set epingle=true where id=(select id from public.transactions where description='tx 8')$q$);
 select qa.cas('Valider le Tricount depuis la liste (l.975)', 'authenticated', :A,
