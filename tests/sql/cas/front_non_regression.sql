@@ -16,6 +16,16 @@ select qa.cas('loadComptes : comptes order by nom (l.865)', 'authenticated', :A,
   $q$select * from public.comptes order by nom$q$);
 select qa.cas('loadComptes : soldes order by date desc (l.867)', 'authenticated', :A,
   $q$select * from public.soldes order by date desc$q$);
+-- #8 : loadComptes lit aussi la vue, sb.from('v_soldes_comptes').select('*') (sans tri, sans filtre : la RLS filtre)
+select qa.cas('#8 loadComptes : v_soldes_comptes select *', 'authenticated', :A,
+  $q$select * from public.v_soldes_comptes$q$);
+select qa.cas('#8 loadComptes : la vue ne renvoie que les 3 comptes de A, avec les colonnes lues par le front', 'authenticated', :A,
+  $q$do $x$ begin
+     if (select count(*) from public.v_soldes_comptes) <> 3 then raise exception 'nombre de lignes'; end if;
+     if exists (select 1 from public.v_soldes_comptes where user_id <> 'aaaaaaaa-0000-0000-0000-000000000001') then raise exception 'ligne de B visible'; end if;
+     perform compte_id, solde_calcule, dernier_solde_banque, date_dernier_solde_banque, ecart, nb_jours_depuis_releve from public.v_soldes_comptes;
+     if (select json_typeof(to_json(solde_calcule)) from public.v_soldes_comptes limit 1) <> 'number' then raise exception 'solde_calcule pas un nombre'; end if;
+     end $x$$q$);
 
 -- ───────── Transactions : saveTx(), deleteTx(), boutons de la liste ─────────
 select qa.cas('saveTx insert entrée sans compte (l.657)', 'authenticated', :A,
@@ -80,9 +90,47 @@ select qa.cas('saveCompte update (l.757)', 'authenticated', :A,
   $q$update public.comptes set nom='Livret A bis',banque='BNP',type='livret',couleur='#000000' where id='10000000-0000-0000-0000-00000000000a'$q$);
 select qa.cas('deleteCompte sans opération, soldes en cascade (l.765)', 'authenticated', :A,
   $q$delete from public.comptes where id='20000000-0000-0000-0000-00000000000a'$q$);
-select qa.cas('deleteCompte avec opération : refusé (erreur non affichée par le front, voir #8)', 'authenticated', :A,
+select qa.cas('deleteCompte avec opération : refusé (message affiché par le front depuis #8)', 'authenticated', :A,
   $q$do $x$ begin update public.transactions set compte_id='30000000-0000-0000-0000-00000000000a' where description='tx 10';
      delete from public.comptes where id='30000000-0000-0000-0000-00000000000a'; end $x$$q$, '23503');
+
+-- #8 : saveCompte envoie toutes les colonnes de la modale ; compte par défaut changé en deux requêtes
+select qa.cas('#8 saveCompte insert courant complet, par défaut (aucun défaut existant)', 'authenticated', :A,
+  $q$insert into public.comptes (user_id,nom,banque,type,couleur,solde_initial,date_solde_initial,plafond,par_defaut)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','TEST QA L''épargne <b>&</b>','Banque <i>fictive</i>','courant','#14B8A6',-35.5,'2026-09-30',null,true)$q$);
+select qa.cas('#8 saveCompte insert especes, plafond renseigné', 'authenticated', :A,
+  $q$insert into public.comptes (user_id,nom,banque,type,couleur,solde_initial,date_solde_initial,plafond,par_defaut)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','Espèces QA','','especes','#5B6EF5',40,'2026-09-30',500,false)$q$);
+select qa.cas('#8 saveCompte update investissement avec plafond', 'authenticated', :A,
+  $q$update public.comptes set nom='Bitcoin',banque='',type='investissement',couleur='#8B5CF6',solde_initial=4950,date_solde_initial='2026-09-30',plafond=10000,par_defaut=false
+     where id='30000000-0000-0000-0000-00000000000a'$q$);
+select qa.cas('#8 changer de défaut en UNE requête : refusé (pourquoi le front en fait deux)', 'authenticated', :A,
+  $q$update public.comptes set nom='Livret A bis',banque='BNP',type='livret',couleur='#000000',solde_initial=0,date_solde_initial=null,plafond=22950,par_defaut=true
+     where id='10000000-0000-0000-0000-00000000000a'$q$, '23505');
+select qa.cas('#8 changer de défaut en DEUX requêtes : un seul compte par défaut ensuite', 'authenticated', :A,
+  $q$do $x$ begin
+     update public.comptes set par_defaut=false where id=(select id from public.comptes where nom='TEST QA L''épargne <b>&</b>');
+     update public.comptes set nom='Livret A bis',banque='BNP',type='livret',couleur='#000000',solde_initial=0,date_solde_initial=null,plafond=22950,par_defaut=true
+       where id='10000000-0000-0000-0000-00000000000a';
+     if (select count(*) from public.comptes where par_defaut) <> 1 then raise exception 'pas exactement un compte par défaut'; end if;
+     if not (select par_defaut from public.comptes where id='10000000-0000-0000-0000-00000000000a') then raise exception 'mauvais compte par défaut'; end if;
+     end $x$$q$);
+select qa.cas('#8 nouveau compte par défaut en deux requêtes (retrait puis insert)', 'authenticated', :A,
+  $q$do $x$ begin
+     update public.comptes set par_defaut=false where id='10000000-0000-0000-0000-00000000000a';
+     insert into public.comptes (user_id,nom,banque,type,couleur,solde_initial,date_solde_initial,plafond,par_defaut)
+       values ('aaaaaaaa-0000-0000-0000-000000000001','Courant QA 2','','courant','#5B6EF5',0,'2026-09-30',null,true);
+     if (select count(*) from public.comptes where par_defaut) <> 1 then raise exception 'pas exactement un compte par défaut'; end if;
+     end $x$$q$);
+select qa.cas('#8 saveCompte type vide : refusé (message affiché par le front)', 'authenticated', :A,
+  $q$update public.comptes set type='' where id='10000000-0000-0000-0000-00000000000a'$q$, '23514');
+select qa.cas('#8 saveCompte plafond 0 : refusé (le front le bloque avant envoi)', 'authenticated', :A,
+  $q$update public.comptes set plafond=0 where id='10000000-0000-0000-0000-00000000000a'$q$, '23514');
+select qa.cas('#8 la vue suit les nouveaux comptes : solde calculé = solde initial sans opération', 'authenticated', :A,
+  $q$do $x$ begin
+     if (select solde_calcule from public.v_soldes_comptes where nom='TEST QA L''épargne <b>&</b>') <> -35.5 then raise exception 'solde calculé'; end if;
+     if (select dernier_solde_banque from public.v_soldes_comptes where nom='Espèces QA') is not null then raise exception 'relevé inattendu'; end if;
+     end $x$$q$);
 
 -- ───────── Soldes : saveSoldeEntry() (upsert), deleteSoldeEntry() ─────────
 select qa.cas('saveSoldeEntry upsert onConflict compte_id,date : nouveau (l.787)', 'authenticated', :A,

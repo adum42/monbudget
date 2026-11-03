@@ -178,11 +178,25 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .compte-card-info{}
 .compte-card-name{font-size:15px;font-weight:600;margin-bottom:2px;}
 .compte-card-bank{font-size:11px;color:var(--muted);}
-.compte-card-type-badge{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
 .compte-solde-actuel{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--green);margin-bottom:4px;}
 .compte-solde-date{font-size:11px;color:var(--muted);margin-bottom:12px;}
 .compte-evolution{font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
 .compte-actions{display:flex;gap:8px;}
+.compte-solde-actuel.neg{color:var(--red);}
+.compte-defaut{color:#F59E0B;font-size:13px;}
+.compte-card-name{overflow-wrap:anywhere;}
+.compte-card-bank{overflow-wrap:anywhere;}
+.compte-card-top{gap:10px;}
+.compte-voyant{flex-shrink:0;white-space:nowrap;}
+.compte-detail{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;}
+.compte-detail td{padding:5px 0;border-top:1px solid var(--border);color:var(--muted);}
+.compte-detail td.num{text-align:right;white-space:nowrap;color:var(--text);font-variant-numeric:tabular-nums;}
+.compte-detail td.num.pos{color:var(--green);}
+.compte-detail td.num.neg{color:var(--red);}
+.badge-ok{background:var(--green-soft);color:var(--green);}
+.badge-warn{background:rgba(245,158,11,0.15);color:#F59E0B;}
+.badge-ko{background:var(--red-soft);color:var(--red);}
+.badge-info{background:var(--accent-soft);color:var(--accent);}
 .btn-sm{padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;}
 .btn-sm:hover{border-color:var(--accent);color:var(--accent);}
 .btn-sm-danger:hover{border-color:var(--red);color:var(--red);}
@@ -412,23 +426,29 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <button class="modal-close" onclick="closeCompteModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="modal-field"><label>Nom du compte</label><input type="text" id="modal-c-nom" placeholder="ex: Livret A, PEA..."></div>
+      <div class="modal-error" id="compte-modal-error" role="alert" style="display:none"></div>
+      <div class="modal-field"><label for="modal-c-nom">Nom du compte</label><input type="text" id="modal-c-nom" placeholder="ex: Compte courant, Livret A, PEA..."></div>
       <div class="modal-row">
-        <div class="modal-field"><label>Banque</label><input type="text" id="modal-c-banque" placeholder="ex: BNP, Boursorama..."></div>
-        <div class="modal-field"><label>Type</label>
-          <select id="modal-c-type">
-            <option value="livret">Livret d'épargne</option>
-            <option value="investissement">Investissement</option>
-          </select>
+        <div class="modal-field"><label for="modal-c-banque">Banque</label><input type="text" id="modal-c-banque" placeholder="ex: BNP, Boursorama..."></div>
+        <div class="modal-field"><label for="modal-c-type">Type</label>
+          <select id="modal-c-type"></select>
         </div>
       </div>
-      <div class="modal-field"><label>Couleur</label><input type="color" id="modal-c-color" value="#5B6EF5" style="height:38px;padding:4px;width:100%;"></div>
+      <div class="modal-row">
+        <div class="modal-field"><label for="modal-c-solde-initial">Solde initial (€)</label><input type="text" inputmode="decimal" id="modal-c-solde-initial" placeholder="0,00 (négatif si découvert)"></div>
+        <div class="modal-field"><label for="modal-c-date-solde-initial">Au soir du</label><input type="date" id="modal-c-date-solde-initial"></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field"><label for="modal-c-plafond">Plafond (€, optionnel)</label><input type="text" inputmode="decimal" id="modal-c-plafond" placeholder="ex: 22950"></div>
+        <div class="modal-field"><label for="modal-c-color">Couleur</label><input type="color" id="modal-c-color" value="#5B6EF5" style="height:42px;padding:4px;width:100%;"></div>
+      </div>
+      <label class="epingle-toggle" for="modal-c-par-defaut">
+        <input type="checkbox" id="modal-c-par-defaut">
+        <span class="epingle-track" style="white-space:nowrap;flex:0 0 auto;">★ Compte par défaut</span>
+        <span class="epingle-hint">Proposé à chaque nouvelle opération</span>
+      </label>
     </div>
-    <div class="modal-footer">
-      <button class="btn-danger" id="compte-modal-delete" style="display:none" onclick="deleteCompteFromModal()">Supprimer</button>
-      <button class="btn-cancel" onclick="closeCompteModal()">Annuler</button>
-      <button class="btn-confirm" onclick="saveCompte()">Enregistrer</button>
-    </div>
+    <div class="modal-footer" id="compte-modal-footer"></div>
   </div>
 </div>
 
@@ -579,6 +599,8 @@ let deleteConfirmPending=false;
 const fmt=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let erreurChargementTx=null;
+let soldesComptes=[];          // lignes de la vue v_soldes_comptes (#8)
+let erreurChargementComptes=null;
 
 // ── EMOJI ─────────────────────────────────────────────
 const EMOJI_CATS={
@@ -898,37 +920,284 @@ async function deleteCatFromModal(){
   closeCatModal();await loadCategories();
 }
 
+// ══ DÉBUT FONCTIONS PURES COMPTES (#8) ════════════════
+// Sans DOM ni Supabase : testables directement (tests/front/ticket08_comptes.test.js).
+// Utilisent lireMontant, MONTANT_MAX et messageErreurSupabase du bloc #6.
+// « ligne de la vue » = une ligne de v_soldes_comptes (#5) : compte_id, solde_calcule,
+// dernier_solde_banque, date_dernier_solde_banque, ecart, nb_jours_depuis_releve…
+
+// Types de compte autorisés en base (contrainte comptes_type_check, #3), dans l'ordre de la modale.
+const TYPES_COMPTE=[
+  {valeur:'courant',libelle:'Compte courant'},
+  {valeur:'livret',libelle:'Livret d\'épargne'},
+  {valeur:'investissement',libelle:'Investissement'},
+  {valeur:'especes',libelle:'Espèces'}
+];
+const VOYANT_JOURS_FRAIS=15;   // relevé de moins de 15 j : peut être « rapproché »
+const VOYANT_JOURS_ANCIEN=30;  // relevé de plus de 30 j : « ⏱ N jours »
+
+// Libellé lisible d'un type de compte ; un type inconnu est renvoyé tel quel.
+function libelleTypeCompte(type){
+  const t=TYPES_COMPTE.find(x=>x.valeur===type);
+  return t?t.libelle:String(type??'—');
+}
+
+// Nombre (ou chaîne numérique renvoyée par l'API) arrondi au centime ; null si absent ou illisible.
+// Corrige les flottants (0.1+0.2 -> 0.3) et le zéro négatif (-0 -> 0).
+function arrondiCentimes(x){
+  if(x===null||x===undefined||x==='') return null;
+  const n=Number(x);
+  if(!Number.isFinite(n)) return null;
+  const r=Math.round(n*100)/100;
+  return r===0?0:r;
+}
+
+// Écart du compte (banque − calculé, à la date du relevé) arrondi au centime.
+// null si aucun relevé, ou si le relevé est antérieur à la date du solde initial (la vue renvoie null).
+function ecartCompte(ligne){
+  return ligne?arrondiCentimes(ligne.ecart):null;
+}
+
+// Voyant de la carte compte. Renvoie {etat, texte, classe, titre}.
+// Règles, dans cet ordre de priorité :
+//   1. aucun relevé (date_dernier_solde_banque vide)       -> 'sans_releve' « Aucun relevé »
+//   2. relevé de plus de 30 j (31 j et plus)              -> 'ancien'      « ⏱ N jours » (quel que soit l'écart :
+//                                                            un relevé trop vieux ne permet plus de conclure)
+//   3. relevé antérieur au solde initial (écart null)      -> 'sans_releve' « Relevé à saisir »
+//   4. écart différent de 0 (au centime)                   -> 'ecart'       « ⚠ écart »
+//   5. écart nul et relevé de moins de 15 j (0 à 14 j)     -> 'rapproche'   « ✓ rapproché »
+//   6. écart nul et relevé de 15 à 30 j inclus             -> 'a_verifier'  « ✓ il y a N j » (concordant,
+//                                                            mais pas assez récent pour être « rapproché »)
+// nb_jours_depuis_releve vient de la vue (calculé en UTC, décision du 03/11) ; négatif (relevé daté
+// dans le futur) -> traité comme 0.
+function voyantCompte(ligne){
+  if(!ligne||!ligne.date_dernier_solde_banque)
+    return {etat:'sans_releve',texte:'Aucun relevé',classe:'badge-info',titre:'Aucun solde banque saisi pour ce compte.'};
+  const jours=Math.max(0,Number(ligne.nb_jours_depuis_releve)||0);
+  if(jours>VOYANT_JOURS_ANCIEN)
+    return {etat:'ancien',texte:`⏱ ${jours} jours`,classe:'badge-ko',titre:`Dernier relevé il y a ${jours} jours : saisissez un solde banque récent.`};
+  const ecart=ecartCompte(ligne);
+  if(ecart===null)
+    return {etat:'sans_releve',texte:'Relevé à saisir',classe:'badge-info',titre:'Le dernier relevé est antérieur à la date du solde initial : saisissez un solde banque plus récent.'};
+  if(ecart!==0)
+    return {etat:'ecart',texte:'⚠ écart',classe:'badge-warn',titre:'Le solde banque ne correspond pas au solde calculé à la même date.'};
+  if(jours<VOYANT_JOURS_FRAIS)
+    return {etat:'rapproche',texte:'✓ rapproché',classe:'badge-ok',titre:'Solde banque égal au solde calculé, relevé de moins de 15 jours.'};
+  return {etat:'a_verifier',texte:`✓ il y a ${jours} j`,classe:'badge-info',titre:`Solde banque égal au solde calculé, mais relevé de ${jours} jours : à revérifier.`};
+}
+
+// Patrimoine total = somme des soldes calculés (lignes de la vue), au centime près.
+// Additionné en centimes entiers pour éviter les erreurs d'arrondi flottant. Aucun compte -> 0.
+function totalPatrimoine(lignes){
+  const centimes=(lignes||[]).reduce((s,l)=>{
+    const v=arrondiCentimes(l&&l.solde_calcule);
+    return v===null?s:s+Math.round(v*100);
+  },0);
+  return centimes===0?0:centimes/100;
+}
+
+// Couleur du compte si c'est une couleur hexadécimale #RRGGBB valide, sinon la couleur par défaut.
+// Protège l'attribut style de la carte et le graphique d'une valeur inattendue.
+function couleurCompte(compte){
+  const c=compte&&compte.couleur;
+  return (typeof c==='string'&&/^#[0-9a-fA-F]{6}$/.test(c))?c:'#5B6EF5';
+}
+
+// Date AAAA-MM-JJ -> JJ/MM/AAAA ; vide -> ''.
+function formatDateFr(iso){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso??''));
+  return m?`${m[3]}/${m[2]}/${m[1]}`:'';
+}
+
+// Vérifie la saisie de la modale compte. Renvoie un message d'erreur, ou null.
+// saisie : {nom, banque, type, couleur, soldeInitial, dateSoldeInitial, parDefaut, plafond}
+// soldeInitial et plafond : texte saisi (lu avec lireMontant). Solde initial vide = 0 ; plafond vide = aucun.
+function validerSaisieCompte(saisie){
+  if(!String(saisie.nom??'').trim()) return 'Indiquez un nom de compte.';
+  if(!TYPES_COMPTE.some(t=>t.valeur===saisie.type)) return 'Choisissez un type de compte.';
+  const si=String(saisie.soldeInitial??'').trim();
+  if(si!==''){
+    const n=lireMontant(si);
+    if(Number.isNaN(n)) return 'Solde initial illisible : saisissez un nombre, par exemple 1250,40 ou -35.';
+    if(Math.abs(Math.round(n*100)/100)>MONTANT_MAX) return 'Le solde initial ne peut pas dépasser 9 999 999 999,99 € (en valeur absolue).';
+  }
+  const pl=String(saisie.plafond??'').trim();
+  if(pl!==''){
+    const n=lireMontant(pl);
+    if(Number.isNaN(n)) return 'Plafond illisible : saisissez un nombre, par exemple 22950.';
+    const r=Math.round(n*100)/100;
+    if(r<=0) return 'Le plafond doit être supérieur à 0 (laissez vide s\'il n\'y en a pas).';
+    if(r>MONTANT_MAX) return 'Le plafond ne peut pas dépasser 9 999 999 999,99 €.';
+  }
+  return null;
+}
+
+// Ligne envoyée à Supabase (sans user_id ni par_defaut, gérés à part).
+function construireLigneCompte(saisie){
+  const si=String(saisie.soldeInitial??'').trim();
+  const pl=String(saisie.plafond??'').trim();
+  return {
+    nom:String(saisie.nom).trim(),
+    banque:String(saisie.banque??'').trim(),
+    type:saisie.type,
+    couleur:saisie.couleur||'#5B6EF5',
+    solde_initial:si===''?0:arrondiCentimes(lireMontant(si)),
+    date_solde_initial:saisie.dateSoldeInitial||null,
+    plafond:pl===''?null:arrondiCentimes(lireMontant(pl))
+  };
+}
+
+// Compte par défaut : un seul par utilisateur (index unique partiel, #3). Pour en changer, il faut
+// deux requêtes : d'abord retirer par_defaut de l'ancien, puis le poser sur le nouveau (sinon 23505).
+// Renvoie l'id du compte dont il faut d'abord retirer par_defaut, ou null s'il n'y a rien à retirer.
+// compteId : compte modifié (null pour un nouveau compte) ; veutDefaut : case cochée.
+function compteDefautARetirer(listeComptes,compteId,veutDefaut){
+  if(!veutDefaut) return null;
+  const ancien=(listeComptes||[]).find(c=>c.par_defaut&&c.id!==compteId);
+  return ancien?ancien.id:null;
+}
+
+// Message lisible pour une erreur Supabase de la modale compte ; action : 'enregistrer' ou 'supprimer'.
+// Les cas propres aux comptes sont traités ici, le reste par messageErreurSupabase (#6).
+function messageErreurCompte(error,action){
+  if(!error) return '';
+  const code=error.code||'';
+  const suffixe=code?` (erreur ${code})`:'';
+  if(code==='23503'&&action==='supprimer')
+    return 'Suppression impossible : ce compte porte des opérations (ou des virements). On ne supprime qu\'un compte créé par erreur et jamais utilisé.'+suffixe;
+  if(code==='23505')
+    return 'Enregistrement refusé : un autre compte est déjà le compte par défaut. Rechargez la page et réessayez.'+suffixe;
+  if(code==='23514')
+    return 'Enregistrement refusé : type de compte inconnu ou plafond négatif ou nul.'+suffixe;
+  if(code==='22003')
+    return 'Enregistrement refusé : montant trop grand (au plus 9 999 999 999,99 €).'+suffixe;
+  if(action==='supprimer'&&code!=='42501'&&!/fetch|network|réseau/i.test(String(error.message||error)))
+    return 'Suppression impossible : '+String(error.message||error)+suffixe;
+  return messageErreurSupabase(error);
+}
+// ══ FIN FONCTIONS PURES COMPTES (#8) ══════════════════
+
 // ── MODAL COMPTE ──────────────────────────────────────
 let editingCompteId=null;
+let saveCompteEnCours=false;
+function afficherErreurCompte(message){
+  const el=document.getElementById('compte-modal-error');
+  el.textContent=message;el.style.display='block';
+  el.closest('.modal-body').scrollTop=0;
+}
+function effacerErreurCompte(){
+  const el=document.getElementById('compte-modal-error');
+  el.textContent='';el.style.display='none';
+}
+// Pied de modale : Supprimer (en modification) / Annuler / Enregistrer
+function resetCompteFooter(){
+  const f=document.getElementById('compte-modal-footer');
+  f.innerHTML=`<button class="btn-danger" id="compte-modal-delete" style="display:none" onclick="askDeleteCompte()">Supprimer</button>
+    <button class="btn-cancel" onclick="closeCompteModal()">Annuler</button>
+    <button class="btn-confirm" id="compte-modal-save" onclick="saveCompte()">Enregistrer</button>`;
+  if(editingCompteId) document.getElementById('compte-modal-delete').style.display='block';
+}
 function openCompteModal(compte){
   editingCompteId=compte?compte.id:null;
+  effacerErreurCompte();
   document.getElementById('compte-modal-title').textContent=compte?'Modifier le compte':'Nouveau compte';
+  const selType=document.getElementById('modal-c-type');
+  selType.innerHTML=TYPES_COMPTE.map(t=>`<option value="${esc(t.valeur)}">${esc(t.libelle)}</option>`).join('');
+  // Type inconnu (ne devrait pas arriver, contrainte #3) : affiché pour ne pas le perdre en silence
+  if(compte&&compte.type&&!TYPES_COMPTE.some(t=>t.valeur===compte.type))
+    selType.insertAdjacentHTML('afterbegin',`<option value="${esc(compte.type)}">${esc(compte.type)} (inconnu)</option>`);
+  const montantTexte=v=>(v===null||v===undefined||v==='')?'':String(arrondiCentimes(v)).replace('.',',');
   document.getElementById('modal-c-nom').value=compte?compte.nom:'';
   document.getElementById('modal-c-banque').value=compte?compte.banque||'':'';
-  document.getElementById('modal-c-type').value=compte?compte.type:'livret';
-  document.getElementById('modal-c-color').value=compte?compte.couleur:'#5B6EF5';
-  document.getElementById('compte-modal-delete').style.display=compte?'block':'none';
+  selType.value=compte?compte.type:'courant';
+  document.getElementById('modal-c-color').value=couleurCompte(compte);
+  document.getElementById('modal-c-solde-initial').value=compte?montantTexte(compte.solde_initial):'';
+  document.getElementById('modal-c-date-solde-initial').value=compte?(compte.date_solde_initial||''):dateLocaleISO();
+  document.getElementById('modal-c-plafond').value=compte?montantTexte(compte.plafond):'';
+  // Nouveau compte : coché par défaut seulement s'il n'existe encore aucun compte par défaut
+  document.getElementById('modal-c-par-defaut').checked=compte?!!compte.par_defaut:!comptes.some(c=>c.par_defaut);
+  resetCompteFooter();
   document.getElementById('compte-modal').classList.add('open');
   setTimeout(()=>document.getElementById('modal-c-nom').focus(),100);
 }
-function closeCompteModal(){document.getElementById('compte-modal').classList.remove('open');editingCompteId=null;}
+function closeCompteModal(){document.getElementById('compte-modal').classList.remove('open');editingCompteId=null;effacerErreurCompte();}
+function lireSaisieCompte(){
+  return {
+    nom:document.getElementById('modal-c-nom').value,
+    banque:document.getElementById('modal-c-banque').value,
+    type:document.getElementById('modal-c-type').value,
+    couleur:document.getElementById('modal-c-color').value,
+    soldeInitial:document.getElementById('modal-c-solde-initial').value,
+    dateSoldeInitial:document.getElementById('modal-c-date-solde-initial').value,
+    plafond:document.getElementById('modal-c-plafond').value,
+    parDefaut:document.getElementById('modal-c-par-defaut').checked
+  };
+}
 async function saveCompte(){
-  const nom=document.getElementById('modal-c-nom').value.trim();
-  const banque=document.getElementById('modal-c-banque').value.trim();
-  const type=document.getElementById('modal-c-type').value;
-  const couleur=document.getElementById('modal-c-color').value;
-  if(!nom) return;
-  if(editingCompteId){
-    await sb.from('comptes').update({nom,banque,type,couleur}).eq('id',editingCompteId);
-  } else {
-    await sb.from('comptes').insert([{user_id:currentUser.id,nom,banque,type,couleur}]);
+  if(saveCompteEnCours) return;
+  effacerErreurCompte();
+  const saisie=lireSaisieCompte();
+  const erreur=validerSaisieCompte(saisie);
+  if(erreur){afficherErreurCompte(erreur);return;}
+  const ligne=construireLigneCompte(saisie);
+  const aRetirer=compteDefautARetirer(comptes,editingCompteId,saisie.parDefaut);
+  const bouton=document.getElementById('compte-modal-save');
+  saveCompteEnCours=true;if(bouton)bouton.disabled=true;
+  let error=null,etape='';
+  try{
+    // Changement de compte par défaut : requête 1 = retirer par_defaut de l'ancien (sinon 23505)
+    if(aRetirer){
+      etape='retrait';
+      ({error}=await sb.from('comptes').update({par_defaut:false}).eq('id',aRetirer));
+    }
+    // Requête 2 = enregistrer le compte, par_defaut compris
+    if(!error){
+      etape='enregistrement';
+      const res=editingCompteId
+        ?await sb.from('comptes').update({...ligne,par_defaut:saisie.parDefaut}).eq('id',editingCompteId)
+        :await sb.from('comptes').insert([{user_id:currentUser.id,...ligne,par_defaut:saisie.parDefaut}]);
+      error=res.error;
+    }
+  }catch(e){error=e;}
+  let message=error?messageErreurCompte(error,'enregistrer'):'';
+  // La 2e requête a échoué après le retrait : on remet l'ancien compte par défaut
+  if(error&&aRetirer&&etape==='enregistrement'){
+    let errRetour=null;
+    try{({error:errRetour}=await sb.from('comptes').update({par_defaut:true}).eq('id',aRetirer));}catch(e){errRetour=e;}
+    if(errRetour) message+=' Attention : l\'ancien compte par défaut n\'a pas pu être rétabli, vérifiez-le.';
   }
-  closeCompteModal();await loadComptes();renderComptes();renderChartComptes();
+  saveCompteEnCours=false;if(bouton)bouton.disabled=false;
+  if(error){
+    console.error('[monbudget] saveCompte ('+etape+')',error);
+    afficherErreurCompte(message);
+    if(aRetirer) await rechargerComptes(); // l'état du compte par défaut a pu changer
+    return;
+  }
+  closeCompteModal();await rechargerComptes();
+}
+function askDeleteCompte(){
+  if(!editingCompteId) return;
+  const f=document.getElementById('compte-modal-footer');
+  f.innerHTML=`<div class="confirm-delete-row">
+    <button class="btn-confirm-delete" onclick="deleteCompteFromModal()">Confirmer la suppression</button>
+    <button class="btn-cancel" onclick="resetCompteFooter()">Annuler</button>
+  </div>`;
 }
 async function deleteCompteFromModal(){
   if(!editingCompteId) return;
-  await sb.from('comptes').delete().eq('id',editingCompteId);
-  closeCompteModal();await loadComptes();renderComptes();renderChartComptes();
+  let error=null;
+  try{({error}=await sb.from('comptes').delete().eq('id',editingCompteId));}catch(e){error=e;}
+  if(error){
+    console.error('[monbudget] deleteCompte',error);
+    resetCompteFooter();afficherErreurCompte(messageErreurCompte(error,'supprimer'));return;
+  }
+  closeCompteModal();await rechargerComptes();
+}
+// Recharge comptes, soldes et vue, puis redessine ce qui en dépend (cartes, graphique, listes de comptes)
+async function rechargerComptes(){
+  await loadComptes();
+  renderComptes();renderChartComptes();
+  if(!erreurChargementComptes) renderTransactions();
 }
 
 // ── MODAL SOLDE ───────────────────────────────────────
@@ -1029,10 +1298,21 @@ async function loadTransactions(){
   transactions=data||[];
 }
 async function loadComptes(){
-  const{data:c}=await sb.from('comptes').select('*').order('nom');
-  comptes=c||[];
-  const{data:s}=await sb.from('soldes').select('*').order('date',{ascending:false});
-  soldes=s||[];
+  const[rc,rs,rv]=await Promise.all([
+    sb.from('comptes').select('*').order('nom'),
+    sb.from('soldes').select('*').order('date',{ascending:false}),
+    sb.from('v_soldes_comptes').select('*')
+  ]);
+  const err=rc.error||rs.error||rv.error;
+  if(err){
+    console.error('[monbudget] loadComptes',err);
+    erreurChargementComptes='Chargement des comptes impossible : '+messageErreurSupabase(err);
+    return;
+  }
+  erreurChargementComptes=null;
+  comptes=rc.data||[];
+  soldes=rs.data||[];
+  soldesComptes=rv.data||[];
 }
 
 // ── RENDER ────────────────────────────────────────────
@@ -1174,38 +1454,70 @@ function renderCategories(){
 }
 
 function renderComptes(){
-  const typeLabel={'livret':"Livret d'épargne",'investissement':'Investissement'};
-  let total=0;
-  comptes.forEach(c=>{const s=getLastSolde(c.id);if(s) total+=s.montant;});
-  document.getElementById('patrimoine-total').textContent=fmt(total)+' €';
   const cards=document.getElementById('comptes-cards');
+  if(erreurChargementComptes){
+    document.getElementById('patrimoine-total').textContent='— €';
+    cards.innerHTML=`<div class="modal-error">${esc(erreurChargementComptes)}</div>`;return;
+  }
+  // Patrimoine total = somme des soldes calculés (v_soldes_comptes), et non plus des derniers relevés
+  document.getElementById('patrimoine-total').textContent=fmt(totalPatrimoine(soldesComptes))+' €';
   if(!comptes.length){cards.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px;">Aucun compte — crées-en un !</div>';return;}
   cards.innerHTML=comptes.map(c=>{
+    const ligne=soldesComptes.find(l=>l.compte_id===c.id)||null;
+    const calcule=ligne?arrondiCentimes(ligne.solde_calcule):null;
+    const banque=ligne?arrondiCentimes(ligne.dernier_solde_banque):null;
+    const dateBanque=ligne?formatDateFr(ligne.date_dernier_solde_banque):'';
+    const ecart=ecartCompte(ligne);
+    const voyant=voyantCompte(ligne);
     const last=getLastSolde(c.id);
     const prev=getPrevSolde(c.id,last?.date);
     const evol=last&&prev?last.montant-prev.montant:null;
-    return`<div class="compte-card">
-      <div class="compte-card-header" style="background:${c.couleur}"></div>
+    const ecartClasse=ecart===null?'':ecart===0?'pos':'neg';
+    const ecartTexte=ecart===null?'—':(ecart>0?'+':'')+fmt(ecart)+' €';
+    const plafond=arrondiCentimes(c.plafond);
+    return`<div class="compte-card" data-compte-id="${esc(c.id)}">
+      <div class="compte-card-header" style="background:${esc(couleurCompte(c))}"></div>
       <div class="compte-card-body">
         <div class="compte-card-top">
           <div class="compte-card-info">
-            <div class="compte-card-name">${c.nom}</div>
-            <div class="compte-card-bank">${c.banque||'—'}</div>
+            <div class="compte-card-name">${esc(c.nom)}${c.par_defaut?' <span class="compte-defaut" title="Compte par défaut">★</span>':''}</div>
+            <div class="compte-card-bank">${c.banque?esc(c.banque)+' · ':''}${esc(libelleTypeCompte(c.type))}</div>
           </div>
-          <span class="compte-card-type-badge">${typeLabel[c.type]||c.type}</span>
+          <span class="badge ${voyant.classe} compte-voyant" title="${esc(voyant.titre)}">${esc(voyant.texte)}</span>
         </div>
-        <div class="compte-solde-actuel">${last?fmt(last.montant)+' €':'— €'}</div>
-        <div class="compte-solde-date">${last?'au '+last.date:'Aucune entrée'}</div>
+        <div class="compte-solde-actuel${calcule!==null&&calcule<0?' neg':''}" title="Solde calculé à partir du solde initial et des opérations">${calcule!==null?fmt(calcule)+' €':'— €'}</div>
+        <div class="compte-solde-date">Solde calculé${c.date_solde_initial?' depuis le '+esc(formatDateFr(c.date_solde_initial)):''}</div>
+        <table class="compte-detail">
+          <tr><td>Solde banque${dateBanque?' ('+esc(dateBanque)+')':''}</td><td class="num">${banque!==null?fmt(banque)+' €':'Aucun relevé'}</td></tr>
+          <tr><td>Écart</td><td class="num ${ecartClasse}">${ecartTexte}</td></tr>
+          ${plafond!==null?`<tr><td>Plafond</td><td class="num">${fmt(plafond)} €</td></tr>`:''}
+        </table>
         ${evol!==null?`<div class="compte-evolution" style="color:${evol>=0?'var(--green)':'var(--red)'}">
-          ${evol>=0?'↑':'↓'} ${fmt(Math.abs(evol))} € depuis le ${prev.date}
-        </div>`:'<div class="compte-evolution" style="color:var(--muted);">Aucune évolution disponible</div>'}
+          ${evol>=0?'↑':'↓'} ${fmt(Math.abs(evol))} € entre les deux derniers relevés (depuis le ${esc(formatDateFr(prev.date))})
+        </div>`:''}
         <div class="compte-actions">
-          <button class="btn-sm" onclick="openSoldeModal('${c.id}','${c.nom}')">📊 Saisir un solde</button>
-          <button class="btn-sm" onclick='openCompteModal(${JSON.stringify(c)})'>✏️</button>
+          <button class="btn-sm" data-solde-compte-id="${esc(c.id)}">📊 Saisir un solde</button>
+          <button class="btn-sm" data-edit-compte-id="${esc(c.id)}" title="Modifier le compte" aria-label="Modifier le compte">✏️</button>
         </div>
       </div>
     </div>`;
   }).join('');
+
+  // Boutons : on retrouve le compte par son id (plus d'onclick construit par concaténation, #8)
+  cards.querySelectorAll('[data-solde-compte-id]').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const c=comptes.find(x=>x.id===btn.dataset.soldeCompteId);
+      if(c) openSoldeModal(c.id,c.nom);
+    });
+  });
+  cards.querySelectorAll('[data-edit-compte-id]').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const c=comptes.find(x=>x.id===btn.dataset.editCompteId);
+      if(c) openCompteModal(c);
+    });
+  });
 }
 
 function getLastSolde(compteId){
@@ -1227,7 +1539,7 @@ function renderChartComptes(){
       const known=soldes.filter(s=>s.compte_id===c.id&&s.date<=d).sort((a,b)=>b.date.localeCompare(a.date));
       return known.length?{x:d,y:known[0].montant}:{x:d,y:null};
     }),
-    borderColor:c.couleur,backgroundColor:c.couleur+'22',tension:.3,fill:false,pointRadius:5,pointHoverRadius:7
+    borderColor:couleurCompte(c),backgroundColor:couleurCompte(c)+'22',tension:.3,fill:false,pointRadius:5,pointHoverRadius:7
   }));
   if(comptes.length>1){
     const totalData=allDates.map(d=>{
