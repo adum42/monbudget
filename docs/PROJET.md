@@ -30,11 +30,11 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #19, #20, #21, #22, #25, #30) :
+Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #17, #19, #20, #21, #22, #25, #30) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
-| 1 | #17 puis #18 Accès navigateur de Quentin, limité à l'environnement de test | Corentin | ordinateur du chef de projet allumé pour le test réel |
+| 1 | #18 Accès navigateur de Quentin limité à l'environnement de test (#17 livré) | Corentin | ordinateur du chef de projet allumé pour le test réel |
 | 2 | #5 Vue `v_soldes_comptes` : solde calculé vs solde banque | Sylvie | — |
 | 3 | #4 Repartir de zéro : purger les transactions et créer les comptes au 30/09 | Sylvie écrit le SQL, le chef de projet l'exécute | liste des comptes et soldes au 30/09 fournie par le chef de projet |
 | 4 | #6 Compte et virements dans la modale transaction | Fabien | #4 ; débloque la ressaisie par le chef de projet des opérations depuis le 01/10 |
@@ -88,6 +88,7 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction.
 - Aiguillage (#20, livré) : `choisirEnvironnement(location.hostname)` dans `index.html` renvoie `prod` pour un domaine de la liste blanche `DOMAINES_PROD` (`monbudget-lilac.vercel.app`), `test` sinon ; en test, bandeau « Environnement de TEST ».
 - Circuit d'un ticket avec migration (#22) : test local (Postgres jetable, `tests/sql/run.sh`) → application sur TEST par le chef de projet → inscription et vérification par Sylvie → recette de Quentin → feu vert → application sur PROD par le chef de projet → inscription et vérification → PR → merge. Détail : `CLAUDE.md` et `supabase/README.md`.
 - Seul le chef de projet écrit sur la prod ; les agents n'y font que des lectures, plus l'inscription des migrations dans l'historique.
+- Accès navigateur de Quentin (#17, #18) : permanent, mais uniquement sur une preview Vercel ou `localhost` (donc TEST), après contrôle du bandeau « Environnement de TEST » et du log console ; jamais sur un domaine de `DOMAINES_PROD`. Ses données de test sont préfixées `TEST QA` (le jeu de données de #21 est préfixé `TEST` et n'est pas modifié). Règles : `.claude/agents/quentin.md`.
 
 ### Base Supabase (schéma `public`)
 
@@ -142,6 +143,7 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 | 02/11/2026 | Migrations appliquées par le chef de projet dans l'éditeur SQL du dashboard (`begin; … commit;`), d'abord sur TEST puis sur PROD après validation de Quentin et feu vert ; Sylvie les inscrit dans l'historique avec la version = préfixe du fichier, identique sur les deux bases ; les agents n'utilisent plus `apply_migration` (#22, option 1) | `apply_migration` est annulé automatiquement par le client ; une seule personne écrit sur la prod |
 | 02/11/2026 | Après le sprint 1 : application automatique des migrations par GitHub Actions (`supabase db push`), sur TEST à la PR et sur PROD au merge (option 3, #32) | supprimer le geste manuel et les erreurs de version |
 | 03/11/2026 | Protection de `main` : merge uniquement par PR, check `tests-sql` obligatoire (sans approbation requise, contournement admin possible en urgence) | une PR qui casse une migration ou une requête du front ne peut plus être mergée par erreur |
+| 03/11/2026 | Accès navigateur de Quentin permanent mais limité à TEST : previews et `localhost` seulement, contrôle du bandeau « Environnement de TEST » avant toute action, prod interdite même en lecture (contrôle de la prod en SQL lecture seule uniquement) ; ses données de test sont préfixées `TEST QA` (#18) | tester l'app réellement sans jamais toucher aux données réelles, et sans abîmer le jeu de données de #21 |
 | 03/11/2026 | Sprint 1 : #5 traité avant #4 ; si la charge déborde, on sort #9 en premier, puis #6 en dernier recours | #5 ne dépend de rien alors que #4 attend la liste des comptes au 30/09 ; #6 permet la ressaisie des opérations depuis le 01/10 |
 
 Décisions en attente : voir les tickets labellisés `decision`.
