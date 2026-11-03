@@ -19,7 +19,7 @@ Hors périmètre (décision du 29/10/2026) : **import bancaire CSV/OFX**.
 
 | Étape | Fonctionnalité | Maquette | État |
 |---|---|---|---|
-| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4) et modale transaction (#6) livrés ; cartes comptes (#8) et filtre par compte (#7) à venir |
+| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6) et cartes comptes (#8) livrés ; filtre par compte (#7) et validation de l'étape (#10) à venir |
 | 2 | Pointage et rapprochement bancaire | `docs/maquettes/2-pointage.html` | à faire |
 | 3 | Cagnottes par thème | `docs/maquettes/4-cagnottes.html` | à faire |
 | 4 | Suivi de l'épargne mensuelle | `docs/maquettes/3-epargne.html` | à faire |
@@ -30,22 +30,23 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #4, #5, #6, #17, #18, #19, #20, #21, #22, #25, #30, #43, #45) :
+Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #4, #5, #6, #8, #17, #18, #19, #20, #21, #22, #25, #30, #43, #45) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
-| 1 | #8 Cartes comptes : solde calculé, écart et voyant | Fabien | #5 (vue en prod) ; ticket hors label `sprint-1` à ce jour |
-| 2 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
-| 3 | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | — |
-| 4 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44 (même bloc de `renderCategories`, branches successives) |
+| 1 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
+| 2 | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | — |
+| 3 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44 (même bloc de `renderCategories`, branches successives) |
 
-Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48, #43 intégré au sprint 1). Restent ouverts, **intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes (nom, banque, boutons ✏️ et « Saisir un solde » sans `onclick` concaténé) fait partie de #8.
+#8 (cartes comptes) est livré le 03/11 (PR #52, sans migration) ; le label `sprint-1` lui a été ajouté le même jour.
+
+Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48). Restent ouverts, **intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes a été fait par #8.
 
 La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
 
 Si la charge déborde, on sort #9 du sprint en premier (décision du chef de projet, 03/11).
 
-Les comptes de type `courant` créés par #4 ne doivent pas être modifiés via l'interface avant #8 (la modale compte ne propose pas ce type).
+Depuis #8, le chef de projet peut modifier ses comptes depuis l'app (type `courant` proposé, plafond et couleur pour tous les types) : la consigne « ne pas modifier un compte avant #8 » est levée.
 
 ## 3. État actuel de l'application
 
@@ -54,7 +55,7 @@ Les comptes de type `courant` créés par #4 ne doivent pas être modifiés via 
 | Onglet | Contenu |
 |---|---|
 | Transactions | métriques du mois (hors mouvements), boutons « + Entrée », « − Sortie » et « ⇄ Mouvement entre comptes », liste filtrable (type dont « Mouvements », catégorie, tri date / montant ↑↓), recherche texte (description + note), « Tout voir » (tous les mois), épingle cliquable, suivi Tricount ; nom du compte sous la description (« Depuis → Vers » pour un mouvement) ; les mouvements sont listés avec un badge « Mouvement » (#6) |
-| Comptes | patrimoine total, une carte par compte avec **dernier solde saisi à la main** et évolution, graphique d'évolution. Le solde calculé de `v_soldes_comptes` n'est pas encore affiché (#8) |
+| Comptes | patrimoine total (**somme des soldes calculés**), une carte par compte (#8) : solde calculé lu dans `v_soldes_comptes`, dernier solde banque et sa date, écart, voyant, plafond s'il est renseigné ; boutons ✏️ et « Saisir un solde » ; graphique d'évolution (courbes des relevés saisis et « Total patrimoine ») |
 | Catégories | CRUD des catégories avec sélecteur d'emoji |
 | Statistiques | 3 KPIs (sorties, entrées, taux d'épargne vs mois précédent), barres horizontales par catégorie, évolution 6 mois, top 5 catégories (mouvements exclus partout) |
 
@@ -72,6 +73,32 @@ Champs : description, montant, date, type (**Entrée / Sortie / Mouvement** ; le
 Actions : enregistrer, dupliquer (date du jour), supprimer avec confirmation en 2 temps.
 Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La description reçoit le focus 100 ms après l'ouverture.
 
+### Cartes comptes et voyant (#8)
+
+`loadComptes` lit `comptes`, `soldes` et `v_soldes_comptes` (`select('*')`) ; une erreur de chargement est affichée dans l'onglet. Chaque carte montre le **solde calculé** (en gros), le dernier solde banque et sa date, l'**écart** (solde banque − solde calculé à la date du relevé) et un **voyant**. Le **patrimoine total** est la somme des soldes calculés (calcul en centimes entiers, `totalPatrimoine`).
+
+Règles du voyant (validées par le chef de projet le 03/11/2026), appliquées dans cet ordre :
+
+1. Aucun relevé saisi → « Aucun relevé ».
+2. Relevé de 31 jours ou plus → « ⏱ N jours », **même s'il y a un écart**.
+3. Relevé antérieur au solde initial (écart non calculable) → « Relevé à saisir ».
+4. Écart ≠ 0 → « ⚠ écart ».
+5. Écart nul et relevé de 0 à 14 jours → « ✓ rapproché » (vert).
+6. Écart nul et relevé de 15 à 30 jours → « ✓ il y a N j » (bleu).
+
+Un relevé daté dans le futur compte comme 0 jour.
+
+Tout texte saisi des cartes passe par `esc()` ; les boutons ✏️ et « Saisir un solde » utilisent `data-edit-compte-id` / `data-solde-compte-id` + `addEventListener` (plus d'`onclick` concaténé).
+
+### Modale compte (#8)
+
+Champs : nom, banque, type (**4 types** avec libellés : Compte courant, Livret d'épargne, Investissement, Espèces), solde initial et sa date (par défaut la date du jour locale, `dateLocaleISO()`), compte par défaut, **plafond et couleur pour tous les types**. Le nom reçoit le focus 100 ms après l'ouverture (`#modal-c-nom`).
+
+- **Validation avant envoi** (`validerSaisieCompte`) : rien n'est envoyé tant qu'une règle échoue.
+- **Compte par défaut** : changé en **deux requêtes** (retrait sur l'ancien, puis pose sur le nouveau) ; si la seconde échoue, l'ancien défaut est remis et l'erreur affichée.
+- **Suppression** en deux temps ; un compte qui porte des opérations est refusé (`23503`) avec le message « Suppression impossible : ce compte porte des opérations… », modale ouverte.
+- **Erreurs** : toute erreur Supabase de `saveCompte` / `deleteCompteFromModal` est affichée avec son code (`messageErreurCompte`, qui réutilise `messageErreurSupabase`), la saisie est conservée et la modale reste ouverte.
+
 ### Organisation du code (`index.html`)
 
 | Bloc | Fonctions principales |
@@ -80,12 +107,13 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La 
 | Rendu | `renderAll`, `renderMetrics`, `renderTransactions`, `renderCategories`, `renderComptes`, `renderChartComptes`, `renderStatsKpis`, `renderCharts` |
 | Transactions : fonctions pures (#6) | bloc « FONCTIONS PURES (#6) » : `lireMontant`, `compteParDefaut`, `validerSaisieTx`, `construireLigneTx`, `messageErreurSupabase`, `libelleCompteTx`, constante `MONTANT_MAX`. Sans DOM ni réseau, testées par `tests/front/` |
 | Transactions : modale | `openTxModal` → `ouvrirModaleTx`, `lireSaisieTx`, `saveTx`, `setTxType`, `setTricount`, `dupTx`, `askDeleteTx`, `deleteTxFromModal`, `resetDeleteConfirm`, `afficherErreurTx`, `effacerErreurTx`, `optionsComptes` |
-| Comptes / soldes | `openCompteModal`, `saveCompte`, `deleteCompteFromModal`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `getLastSolde`, `getPrevSolde` |
+| Comptes : fonctions pures (#8) | bloc « FONCTIONS PURES COMPTES (#8) » : `libelleTypeCompte`, `arrondiCentimes`, `ecartCompte`, `voyantCompte`, `totalPatrimoine`, `couleurCompte`, `formatDateFr`, `validerSaisieCompte`, `construireLigneCompte`, `compteDefautARetirer`, `messageErreurCompte`. Sans DOM ni réseau, testées par `tests/front/` |
+| Comptes / soldes | `openCompteModal`, `lireSaisieCompte`, `saveCompte`, `askDeleteCompte`, `deleteCompteFromModal`, `closeCompteModal`, `afficherErreurCompte`, `effacerErreurCompte`, `rechargerComptes`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `deleteSoldeEntry`, `renderSoldeHistory`, `getLastSolde`, `getPrevSolde` |
 | Navigation | `switchTab`, `changeMonth`, `toggleViewAll` |
 | Environnement | `choisirEnvironnement`, `ENV`, `DOMAINES_PROD` (#20) |
-| Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML : liste des transactions depuis #43 ; reste à faire : #49, et cartes comptes dans #8), `dateLocaleISO` (date du jour dans le fuseau local, bloc « DATE DU JOUR : FONCTION PURE (#45) » ; ne plus utiliser `toISOString` pour « aujourd'hui »), `txOfMonth` |
+| Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML : liste des transactions depuis #43, cartes comptes depuis #8 ; reste à faire : #49), `dateLocaleISO` (date du jour dans le fuseau local, bloc « DATE DU JOUR : FONCTION PURE (#45) » ; ne plus utiliser `toISOString` pour « aujourd'hui »), `txOfMonth` |
 
-État global : `currentUser`, `categories`, `transactions`, `comptes`, `soldes`, `currentMonth` (`AAAA-MM`), `viewAllMonths`.
+État global : `currentUser`, `categories`, `transactions`, `comptes`, `soldes`, `soldesComptes` (lignes de `v_soldes_comptes`, #8), `currentMonth` (`AAAA-MM`), `viewAllMonths`.
 
 ### Environnements
 
@@ -109,7 +137,7 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 |---|---|---|
 | `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable ; compte source d'un mouvement), `compte_dest_id` (nullable ; compte destination d'un mouvement), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Contrainte `transactions_mouvement_comptes_check` : un `mouvement` a `compte_id` et `compte_dest_id` renseignés et différents ; une entrée ou une sortie n'a pas de `compte_dest_id`. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées. Trigger `transactions_verifier_comptes` (avant insertion ou modification, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503`. Colonne `direction` **supprimée** (#3). Utilisés par l'interface depuis #6. En prod, les 58 transactions d'origine ont été purgées le 03/11 (#4, copie dans `backup_v1.transactions`). |
 | `categories` | `nom`, `type` ∈ {entrée, sortie, les deux}, `couleur`, `emoji` | |
-| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. La modale de compte ne propose encore que `livret` et `investissement`, et n'utilise pas les nouvelles colonnes (#8). En prod (#4, 03/11) : **7 comptes** avec leur solde initial au soir du 30/09/2026 (3 `courant` dont le compte par défaut, 3 `livret`, 1 `investissement`), `plafond` vide et couleur par défaut ; les 3 anciens comptes et leurs 5 soldes banque ont été supprimés. |
+| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. Toutes les colonnes sont éditables depuis la modale compte depuis #8. En prod (#4, 03/11) : **7 comptes** avec leur solde initial au soir du 30/09/2026 (3 `courant` dont le compte par défaut, 3 `livret`, 1 `investissement`), `plafond` vide et couleur par défaut, à renseigner par le chef de projet depuis l'app ; les 3 anciens comptes et leurs 5 soldes banque ont été supprimés. |
 | `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Soldes banque saisis à la main (relevés). |
 
 Vue `v_soldes_comptes` (#5, migration `202611031145_vue_soldes_comptes.sql`, en prod le 03/11) : une ligne par compte de l'utilisateur, `security_invoker = on` (soumise à la RLS de l'utilisateur qui l'interroge).
@@ -123,30 +151,33 @@ Vue `v_soldes_comptes` (#5, migration `202611031145_vue_soldes_comptes.sql`, en 
 | `ecart` | `dernier_solde_banque − solde_calcule_a_date_banque` (même règle du `null`) |
 | `nb_jours_depuis_releve` | jours écoulés depuis le dernier relevé, calculé en UTC (accepté le 03/11) |
 
-Elle n'est pas encore lue par l'interface : affichage prévu par #8 (`sb.from('v_soldes_comptes').select('*')`).
+Lue par l'interface depuis #8 (`sb.from('v_soldes_comptes').select('*')` dans `loadComptes`).
 
 Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués par le chef de projet dans l'éditeur SQL du dashboard, puis inscrits dans `supabase_migrations.schema_migrations` par Sylvie avec la version = préfixe du fichier, identique sur les deux bases (#22). Exception historique acceptée : `etape1_comptes_tous_types_virements` (#3), appliquée le 02/11/2026, est inscrite avec `20261102102800` sur test et `20261102103500` sur prod.
 
 ### Tests et CI (#25, livré le 03/11/2026)
 
-- `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (116 cas au 03/11 : #3, #5 et non-régression des requêtes de `index.html`). Mode d'emploi : `tests/sql/README.md`.
+- `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (127 cas au 03/11 : #3, #5 et non-régression des requêtes de `index.html`, dont 11 ajoutés par #8 : vue, `saveCompte`, bascule du compte par défaut, `23505`, `23514`). Mode d'emploi : `tests/sql/README.md`.
 - Chaque nouveau ticket de base ajoute son fichier `tests/sql/cas/ticketNN_<sujet>.sql` ; chaque nouvelle requête `sb.from(...)` du front est ajoutée à `cas/front_non_regression.sql`.
 - `tests/front/ticket06_fonctions_tx.test.js` (#6) : tests unitaires Node, sans dépendance, des fonctions pures de la modale transaction, extraites telles quelles de `index.html` (`node tests/front/ticket06_fonctions_tx.test.js`). Pas encore lancés en CI (prévu dans #9).
 - `tests/front/ticket45_date_locale.test.js` (#45) : tests unitaires de `dateLocaleISO`, à lancer avec `TZ=Europe/Paris node tests/front/ticket45_date_locale.test.js` (refuse de tourner sans ce fuseau). Pas encore en CI (#9).
+- `tests/front/ticket08_comptes.test.js` (#8) : 85 tests unitaires des fonctions pures des comptes (voyant et ses bornes, écart, patrimoine en centimes, validation, compte par défaut), `node tests/front/ticket08_comptes.test.js`. Pas encore en CI (#9).
+- Recette navigateur sans connexion (méthode de Quentin pour #8, réutilisable) : app servie sur `127.0.0.1`, réseau externe coupé, CDN servis en local, Supabase remplacé dans la page par un faux Postgres en mémoire qui applique FK, index unique et contraintes ; aucune donnée créée sur TEST ni PROD.
+- Pour les scripts Playwright (#9) : attendre que le focus soit posé (100 ms après l'ouverture) sur `#modal-c-nom` pour la modale compte, comme sur la description pour la modale transaction, avant de remplir les champs.
 - GitHub Actions `.github/workflows/tests.yml`, job `tests-sql` (Postgres 17, sans secret) à chaque PR et push sur `main`.
 - `main` est protégée (03/11/2026) : merge uniquement par PR, avec le check `tests-sql` vert.
 
 ### Dette technique connue
 
-- Erreurs Supabase non affichées : réglé pour les transactions par #6. Restent silencieuses les écritures des comptes (`saveCompte`, `deleteCompteFromModal` : #8), des catégories (`saveCat`, `deleteCatFromModal` : suppression traitée par #44) et des soldes banque (`saveSoldeEntry`, `deleteSoldeEntry` : pas de ticket).
-- Textes saisis insérés sans échappement HTML (liste des transactions corrigée par #43) : catégories, listes déroulantes, historique des soldes et top 5 (#49) ; cartes comptes (#8).
+- Erreurs Supabase non affichées : réglé pour les transactions (#6) et les comptes (#8). Restent silencieuses les écritures des catégories (`saveCat`, `deleteCatFromModal` : suppression traitée par #44) et des soldes banque (`saveSoldeEntry`, `deleteSoldeEntry` : pas de ticket, relevé par Quentin le 03/11).
+- Textes saisis insérés sans échappement HTML (liste des transactions corrigée par #43, cartes comptes par #8) : catégories, listes déroulantes, historique des soldes et top 5 (#49).
+- Deux « patrimoine » différents dans l'onglet Comptes (relevé par Quentin, #8) : le « Patrimoine total » du haut est la somme des **soldes calculés**, la courbe « Total patrimoine » du graphique est la somme des **derniers relevés** saisis à chaque date (`renderChartComptes`). Même nom, chiffres possiblement différents. Pas de ticket.
 - Page ouverte pendant le passage de minuit : la modale propose la nouvelle date mais l'en-tête garde l'ancien mois jusqu'au rechargement (préexistant, pas de ticket ; la date du jour elle-même est corrigée par #45).
 - Erreur de chargement des transactions : la liste l'affiche, mais les métriques gardent les données précédentes (non bloquant, pas de ticket).
 - Aucune icône déclarée : 404 sur `/favicon.ico` dans la console (cosmétique).
-- Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique).
+- Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique, toujours présent après #8 ; pas de défilement horizontal).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
 - Pas encore de tests navigateur (Playwright, #9). Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
-- Le total du patrimoine additionne les derniers soldes saisis, quelle que soit leur date.
 
 ## 4. Décisions
 
@@ -176,9 +207,13 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 | 03/11/2026 | Sprint 1 : #5 traité avant #4 ; si la charge déborde, on sort #9 en premier | #5 ne dépend de rien alors que #4 attend la liste des comptes au 30/09 |
 | 03/11/2026 | Solde initial de chaque compte = solde **au soir du 30/09/2026** ; seules les transactions datées **à partir du 01/10/2026** sont saisies | sinon double comptage dans `v_soldes_comptes` |
 | 03/11/2026 | `nb_jours_depuis_releve` de `v_soldes_comptes` reste calculé en UTC | écart d'au plus un jour, sans enjeu |
-| 03/11/2026 | Comptes de prod (#4) : 3 comptes `courant`, dont le compte par défaut ; plafonds et couleurs non renseignés, ajoutés par le chef de projet après #8, qui doit proposer plafond et couleur pour tous les types ; ne pas modifier un compte depuis l'app avant #8 | la modale compte actuelle ne connaît ni le type `courant` ni le plafond |
+| 03/11/2026 | Comptes de prod (#4) : 3 comptes `courant`, dont le compte par défaut ; plafonds et couleurs non renseignés, ajoutés par le chef de projet après #8, qui doit proposer plafond et couleur pour tous les types ; ne pas modifier un compte depuis l'app avant #8 (consigne levée : #8 livré le 03/11) | la modale compte actuelle ne connaît ni le type `courant` ni le plafond |
 | 03/11/2026 | Nouvelle transaction : compte obligatoire ; une ancienne transaction sans compte reste modifiable avec « Aucun compte » (#6) | toutes les nouvelles opérations alimentent le solde calculé, sans bloquer l'historique |
 | 03/11/2026 | Les mouvements restent **visibles dans la liste** (badge « Mouvement », filtre « Mouvements ») et toujours **exclus des métriques et des statistiques** (#6) | voir les virements sans fausser le budget |
+| 03/11/2026 | Échappement HTML des cartes comptes intégré à #8 (`esc()` + `data-*-id`, plus d'`onclick` concaténé) | l'écran était refait ; les boutons cassaient sur une apostrophe |
+| 03/11/2026 | Règles du voyant des cartes comptes, dans l'ordre : aucun relevé → « Aucun relevé » ; relevé ≥ 31 j → « ⏱ N jours » même avec écart ; relevé antérieur au solde initial → « Relevé à saisir » ; écart ≠ 0 → « ⚠ écart » ; écart 0 et 0–14 j → « ✓ rapproché » (vert) ; écart 0 et 15–30 j → « ✓ il y a N j » (bleu) ; relevé futur = 0 j (#8, proposition de Fabien validée) | un relevé trop ancien ne permet plus de conclure ; distinguer « concordant récent » et « concordant ancien » |
+| 03/11/2026 | Patrimoine total de l'onglet Comptes = somme des **soldes calculés** (#8) | refléter les opérations saisies, pas seulement les relevés |
+| 03/11/2026 | #44 et #49 intégrés au sprint 1 (PR #51) ; #8 reçoit le label `sprint-1` | bugs courts, même écran ; #8 était déjà traité dans le sprint |
 | 03/11/2026 | Les soldes des comptes suivent les opérations (entrée = crédit, sortie = débit, mouvement = débit de « Depuis » et crédit de « Vers ») pour voir l'écart avec le solde réel : calcul par `v_soldes_comptes` (#5), affichage par #8, pas de nouveau ticket | besoin déjà couvert |
 
 Décisions en attente : voir les tickets labellisés `decision`.
