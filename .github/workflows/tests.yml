@@ -1,0 +1,49 @@
+# Tests automatiques de monbudget.
+# Un job par famille de tests : l'échec de l'un n'empêche pas de lire le résultat de l'autre.
+#   - tests-sql (#25)  : migrations rejouées sur un Postgres jetable, puis tests SQL. Aucun secret.
+#   - Playwright (#9)  : à ajouter ici comme un job séparé.
+
+name: Tests
+
+on:
+  pull_request:          # chaque PR, à chaque nouveau commit poussé dessus
+  push:
+    branches: [main]     # après chaque merge (les branches de ticket sont couvertes par leur PR)
+  workflow_dispatch:     # lancement manuel depuis l'onglet Actions
+
+permissions:
+  contents: read
+
+jobs:
+  tests-sql:
+    name: tests-sql
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Postgres jetable, détruit à la fin du job. Même version majeure que les projets Supabase (17).
+    # Il ne se connecte à aucun projet Supabase : aucune donnée réelle, aucun secret.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres   # mot de passe local d'un conteneur jetable, pas un secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Rejouer les migrations et lancer les tests SQL
+        run: tests/sql/run.sh
