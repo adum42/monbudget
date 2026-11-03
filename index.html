@@ -1092,22 +1092,22 @@ function renderTransactions(){
     const badgeLabel=isMvt?'Mouvement':isEntree?'Entrée':'Sortie';
     const libCompte=libelleCompteTx(t,comptes);
     const compteHtml=libCompte?`<span class="tx-compte">${isMvt?'⇄':'🏦'} ${esc(libCompte)}</span>`:'';
-    const meta=`${t.date}${t.categories?' · '+(t.categories.emoji||'📁')+' '+t.categories.nom:''}`;
-    const noteHtml=t.note?`<span class="tx-note">${t.note}</span>`:'';
+    const meta=`${esc(t.date)}${t.categories?' · '+esc(t.categories.emoji||'📁')+' '+esc(t.categories.nom):''}`;
+    const noteHtml=t.note?`<span class="tx-note">${esc(t.note)}</span>`:'';
     const tc=t.tricount||'non';
     const tcBtn=isMvt?'':tc==='oui'
-      ?`<button class="btn-tricount-validate" data-tc-id="${t.id}">Valider Tricount</button>`
+      ?`<button class="btn-tricount-validate" data-tc-id="${esc(t.id)}">Valider Tricount</button>`
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
       :`<span class="btn-tricount-non">Hors Tricount</span>`;
     const pinSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>`;
     const pinIcon=t.epingle
-      ?`<span class="pin-icon" data-pin-id="${t.id}" data-pin-val="1" title="Épinglé — cliquer pour désépingler" style="cursor:pointer;">${pinSvg}</span>`
-      :`<span class="pin-icon" data-pin-id="${t.id}" data-pin-val="0" title="Épingler" style="cursor:pointer;opacity:.25;">${pinSvg}</span>`;
-    return`<div class="tx-item" data-id="${t.id}" data-type="${t.type}" style="cursor:pointer;">
+      ?`<span class="pin-icon" data-pin-id="${esc(t.id)}" data-pin-val="1" title="Épinglé — cliquer pour désépingler" style="cursor:pointer;">${pinSvg}</span>`
+      :`<span class="pin-icon" data-pin-id="${esc(t.id)}" data-pin-val="0" title="Épingler" style="cursor:pointer;opacity:.25;">${pinSvg}</span>`;
+    return`<div class="tx-item" data-id="${esc(t.id)}" data-type="${esc(t.type)}" style="cursor:pointer;">
       ${pinIcon}
       <div class="tx-left">
-        <span class="tx-name">${t.description}</span>
+        <span class="tx-name">${esc(t.description)}</span>
         ${compteHtml}
         <span class="tx-meta">${meta}</span>
         ${noteHtml}
