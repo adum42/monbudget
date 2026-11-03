@@ -30,14 +30,14 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #4, #5, #6, #17, #18, #19, #20, #21, #22, #25, #30) :
+Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #4, #5, #6, #17, #18, #19, #20, #21, #22, #25, #30, #43, #45) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
 | 1 | #8 Cartes comptes : solde calculé, écart et voyant | Fabien | #5 (vue en prod) ; ticket hors label `sprint-1` à ce jour |
 | 2 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
 
-Bugs ouverts le 03/11, à prioriser par le chef de projet (front, `taille:S`, sans migration) : #43 échappement HTML de la liste des transactions, #44 croix ✕ des catégories, #45 date du jour calculée en UTC.
+Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48, #43 intégré au sprint 1). Restent ouverts, hors label `sprint-1` : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes (nom, banque, boutons ✏️ et « Saisir un solde » sans `onclick` concaténé) fait partie de #8.
 
 La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
 
@@ -81,7 +81,7 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La 
 | Comptes / soldes | `openCompteModal`, `saveCompte`, `deleteCompteFromModal`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `getLastSolde`, `getPrevSolde` |
 | Navigation | `switchTab`, `changeMonth`, `toggleViewAll` |
 | Environnement | `choisirEnvironnement`, `ENV`, `DOMAINES_PROD` (#20) |
-| Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML ; pas encore utilisé partout, #43), `txOfMonth` |
+| Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML : liste des transactions depuis #43 ; reste à faire : #49, et cartes comptes dans #8), `dateLocaleISO` (date du jour dans le fuseau local, bloc « DATE DU JOUR : FONCTION PURE (#45) » ; ne plus utiliser `toISOString` pour « aujourd'hui »), `txOfMonth` |
 
 État global : `currentUser`, `categories`, `transactions`, `comptes`, `soldes`, `currentMonth` (`AAAA-MM`), `viewAllMonths`.
 
@@ -130,14 +130,15 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 - `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (116 cas au 03/11 : #3, #5 et non-régression des requêtes de `index.html`). Mode d'emploi : `tests/sql/README.md`.
 - Chaque nouveau ticket de base ajoute son fichier `tests/sql/cas/ticketNN_<sujet>.sql` ; chaque nouvelle requête `sb.from(...)` du front est ajoutée à `cas/front_non_regression.sql`.
 - `tests/front/ticket06_fonctions_tx.test.js` (#6) : tests unitaires Node, sans dépendance, des fonctions pures de la modale transaction, extraites telles quelles de `index.html` (`node tests/front/ticket06_fonctions_tx.test.js`). Pas encore lancés en CI (prévu dans #9).
+- `tests/front/ticket45_date_locale.test.js` (#45) : tests unitaires de `dateLocaleISO`, à lancer avec `TZ=Europe/Paris node tests/front/ticket45_date_locale.test.js` (refuse de tourner sans ce fuseau). Pas encore en CI (#9).
 - GitHub Actions `.github/workflows/tests.yml`, job `tests-sql` (Postgres 17, sans secret) à chaque PR et push sur `main`.
 - `main` est protégée (03/11/2026) : merge uniquement par PR, avec le check `tests-sql` vert.
 
 ### Dette technique connue
 
 - Erreurs Supabase non affichées : réglé pour les transactions par #6. Restent silencieuses les écritures des comptes (`saveCompte`, `deleteCompteFromModal` : #8), des catégories (`saveCat`, `deleteCatFromModal` : suppression traitée par #44) et des soldes banque (`saveSoldeEntry`, `deleteSoldeEntry` : pas de ticket).
-- Textes saisis insérés sans échappement HTML dans la liste des transactions (#43) ; même défaut dans les catégories, les cartes comptes, l'historique des soldes et le top 5 (hors périmètre de #43).
-- « Date du jour » et mois courant calculés en UTC : entre minuit et 1–2 h (Paris), la veille est proposée (#45).
+- Textes saisis insérés sans échappement HTML (liste des transactions corrigée par #43) : catégories, listes déroulantes, historique des soldes et top 5 (#49) ; cartes comptes (#8).
+- Page ouverte pendant le passage de minuit : la modale propose la nouvelle date mais l'en-tête garde l'ancien mois jusqu'au rechargement (préexistant, pas de ticket ; la date du jour elle-même est corrigée par #45).
 - Erreur de chargement des transactions : la liste l'affiche, mais les métriques gardent les données précédentes (non bloquant, pas de ticket).
 - Aucune icône déclarée : 404 sur `/favicon.ico` dans la console (cosmétique).
 - Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique).
