@@ -1,6 +1,6 @@
 # monbudget — dossier projet
 
-> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 03/11/2026.
+> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 04/11/2026.
 > Elle décrit l'app **telle qu'elle est réellement** (code et base vérifiés), pas telle qu'on l'imagine.
 
 ## 1. Vision
@@ -30,21 +30,19 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 03/11/2026 ; livrés : #2, #3, #4, #5, #6, #8, #17, #18, #19, #20, #21, #22, #25, #30, #43, #45) :
+Ordre de traitement du sprint 1 (mis à jour le 04/11/2026 ; livrés : #2, #3, #4, #5, #6, #8, #9, #17, #18, #19, #20, #21, #22, #25, #30, #43, #45) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
-| 1 | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | secrets `TEST_EMAIL` / `TEST_PASSWORD` (existants selon le chef de projet, 03/11) ; job séparé à ajouter dans `.github/workflows/tests.yml` |
-| 2 | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | — |
-| 3 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44 (même bloc de `renderCategories`, branches successives) |
+| — | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | **livré le 04/11** (PR #57) |
+| 1 | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | — |
+| 2 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44 (même bloc de `renderCategories`, branches successives) |
 
 #8 (cartes comptes) est livré le 03/11 (PR #52, sans migration) ; le label `sprint-1` lui a été ajouté le même jour.
 
 Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48). Restent ouverts, **intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes a été fait par #8.
 
 La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
-
-Si la charge déborde, on sort #9 du sprint en premier (décision du chef de projet, 03/11).
 
 Depuis #8, le chef de projet peut modifier ses comptes depuis l'app (type `courant` proposé, plafond et couleur pour tous les types) : la consigne « ne pas modifier un compte avant #8 » est levée.
 
@@ -155,17 +153,20 @@ Lue par l'interface depuis #8 (`sb.from('v_soldes_comptes').select('*')` dans `l
 
 Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués par le chef de projet dans l'éditeur SQL du dashboard, puis inscrits dans `supabase_migrations.schema_migrations` par Sylvie avec la version = préfixe du fichier, identique sur les deux bases (#22). Exception historique acceptée : `etape1_comptes_tous_types_virements` (#3), appliquée le 02/11/2026, est inscrite avec `20261102102800` sur test et `20261102103500` sur prod.
 
-### Tests et CI (#25, livré le 03/11/2026)
+### Tests et CI (#25 livré le 03/11/2026, #9 livré le 04/11/2026)
+
+Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `tests/README.md`.
 
 - `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (127 cas au 03/11 : #3, #5 et non-régression des requêtes de `index.html`, dont 11 ajoutés par #8 : vue, `saveCompte`, bascule du compte par défaut, `23505`, `23514`). Mode d'emploi : `tests/sql/README.md`.
 - Chaque nouveau ticket de base ajoute son fichier `tests/sql/cas/ticketNN_<sujet>.sql` ; chaque nouvelle requête `sb.from(...)` du front est ajoutée à `cas/front_non_regression.sql`.
-- `tests/front/ticket06_fonctions_tx.test.js` (#6) : tests unitaires Node, sans dépendance, des fonctions pures de la modale transaction, extraites telles quelles de `index.html` (`node tests/front/ticket06_fonctions_tx.test.js`). Pas encore lancés en CI (prévu dans #9).
-- `tests/front/ticket45_date_locale.test.js` (#45) : tests unitaires de `dateLocaleISO`, à lancer avec `TZ=Europe/Paris node tests/front/ticket45_date_locale.test.js` (refuse de tourner sans ce fuseau). Pas encore en CI (#9).
-- `tests/front/ticket08_comptes.test.js` (#8) : 85 tests unitaires des fonctions pures des comptes (voyant et ses bornes, écart, patrimoine en centimes, validation, compte par défaut), `node tests/front/ticket08_comptes.test.js`. Pas encore en CI (#9).
-- Recette navigateur sans connexion (méthode de Quentin pour #8, réutilisable) : app servie sur `127.0.0.1`, réseau externe coupé, CDN servis en local, Supabase remplacé dans la page par un faux Postgres en mémoire qui applique FK, index unique et contraintes ; aucune donnée créée sur TEST ni PROD.
-- Pour les scripts Playwright (#9) : attendre que le focus soit posé (100 ms après l'ouverture) sur `#modal-c-nom` pour la modale compte, comme sur la description pour la modale transaction, avant de remplir les champs.
-- GitHub Actions `.github/workflows/tests.yml`, job `tests-sql` (Postgres 17, sans secret) à chaque PR et push sur `main`.
-- `main` est protégée (03/11/2026) : merge uniquement par PR, avec le check `tests-sql` vert.
+- `tests/front/` : tests unitaires Node, sans dépendance, des fonctions pures de `index.html` extraites telles quelles entre leurs marqueurs : `ticket06_fonctions_tx.test.js` (#6, 47 cas), `ticket08_comptes.test.js` (#8, 85 cas), `ticket45_date_locale.test.js` (#45, 20 cas, avec `TZ=Europe/Paris`). Tous lancés par `cd tests && npm run test:unitaires`. Le bloc #6 s'arrête au début du bloc #45 : un nouveau bloc de fonctions pures doit avoir un marqueur de début **et** de fin, comme le bloc #8.
+- `tests/e2e/` (#9) : Playwright (versions épinglées dans `tests/package.json`), `index.html` servi en local sur `127.0.0.1` (donc TEST), fuseau `Europe/Paris`.
+  - **Sans connexion** (projets `bureau-1280` et `mobile-390`, 20 tests) : CDN servis depuis `tests/node_modules`, faux Supabase en mémoire (`e2e/outils.js`) qui enregistre les écritures et peut renvoyer une erreur Postgres, horloge figée au 04/11/2026 10 h ; tout appel hors TEST et toute erreur console non attendue font échouer le test. Parcours : démarrage et bandeau TEST, écran de connexion, créer puis supprimer une transaction, changer de mois, erreur de la base affichée, fonctions pures appelées dans la page, ouverture juste après minuit.
+  - **Connectés** (projet `connecte`, 3 tests) : vraie base TEST `ebupazakzfbpptmlrzze` avec l'utilisateur de test (secrets `TEST_EMAIL` / `TEST_PASSWORD`, jamais lus par un agent) ; connexion, créer puis supprimer une transaction `TEST QA e2e …` (supprimée même en cas d'échec), changer de mois. Ignorés sans secrets. Sans trace ni capture, et sans rapport publié en CI : une trace Playwright ou l'instantané d'échec contiennent le mot de passe en clair, et le repo est public.
+  - Un nouveau parcours s'ajoute sur le modèle de `e2e/transactions.spec.js`. Dans une modale, attendre le focus automatique (100 ms après l'ouverture : description de la modale transaction, `#modal-c-nom` de la modale compte) avant de remplir.
+- GitHub Actions `.github/workflows/tests.yml`, à chaque PR et push sur `main` : `tests-sql` (Postgres 17, sans secret), `tests-front` (unitaires), `tests-e2e` (Playwright sans connexion, rapport publié en artefact en cas d'échec ; puis connecté, sans rapport).
+- `main` est protégée : merge uniquement par PR, avec les checks `tests-sql`, `tests-front` et `tests-e2e` verts (les deux derniers depuis le 04/11/2026).
+- Recette navigateur manuelle de Quentin (preview ou `localhost`, contrôle du bandeau) : toujours possible pour ce que les tests automatiques ne couvrent pas.
 
 ### Dette technique connue
 
@@ -177,7 +178,8 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 - Aucune icône déclarée : 404 sur `/favicon.ico` dans la console (cosmétique).
 - Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique, toujours présent après #8 ; pas de défilement horizontal).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
-- Pas encore de tests navigateur (Playwright, #9). Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
+- Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
+- Juste après la connexion, l'écran principal s'affiche avant la fin du chargement des données : une modale transaction ouverte dans l'intervalle a des listes de comptes vides (trouvé par #9) : #58.
 
 ## 4. Décisions
 
@@ -214,6 +216,9 @@ Migrations : fichiers `supabase/migrations/<AAAAMMJJHHMM>_<nom>.sql`, appliqués
 | 03/11/2026 | Règles du voyant des cartes comptes, dans l'ordre : aucun relevé → « Aucun relevé » ; relevé ≥ 31 j → « ⏱ N jours » même avec écart ; relevé antérieur au solde initial → « Relevé à saisir » ; écart ≠ 0 → « ⚠ écart » ; écart 0 et 0–14 j → « ✓ rapproché » (vert) ; écart 0 et 15–30 j → « ✓ il y a N j » (bleu) ; relevé futur = 0 j (#8, proposition de Fabien validée) | un relevé trop ancien ne permet plus de conclure ; distinguer « concordant récent » et « concordant ancien » |
 | 03/11/2026 | Patrimoine total de l'onglet Comptes = somme des **soldes calculés** (#8) | refléter les opérations saisies, pas seulement les relevés |
 | 03/11/2026 | #44 et #49 intégrés au sprint 1 (PR #51) ; #8 reçoit le label `sprint-1` | bugs courts, même écran ; #8 était déjà traité dans le sprint |
+| 04/11/2026 | Carte « Top 5 catégories de dépenses » laissée masquée quand le mois affiché n'a aucune sortie (comportement de `renderStatsKpis` depuis la session 2) ; #49 ne change que l'échappement | comportement voulu, pas un bug |
+| 04/11/2026 | Checks `tests-front` et `tests-e2e` obligatoires sur `main`, en plus de `tests-sql` (#9) | une PR qui casse un parcours ou une fonction pure ne peut plus être mergée |
+| 04/11/2026 | Tests connectés en CI sans trace, capture ni rapport publié (#9) | le repo est public et une trace contient la saisie du mot de passe |
 | 03/11/2026 | Les soldes des comptes suivent les opérations (entrée = crédit, sortie = débit, mouvement = débit de « Depuis » et crédit de « Vers ») pour voir l'écart avec le solde réel : calcul par `v_soldes_comptes` (#5), affichage par #8, pas de nouveau ticket | besoin déjà couvert |
 
 Décisions en attente : voir les tickets labellisés `decision`.
