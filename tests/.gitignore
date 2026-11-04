@@ -1,0 +1,5 @@
+# Dépendances installées par npm ci (tests/package-lock.json fait foi)
+node_modules/
+# Sorties de Playwright : rapport HTML, traces et captures des échecs
+playwright-report/
+test-results/
