@@ -34,6 +34,12 @@ async function seConnecter(page){
   }
   await expect(page.locator('#auth-msg'),'message de l\'écran de connexion').not.toHaveClass(/error/);
   await expect(page.locator('#app-screen')).toBeVisible({timeout:15_000});
+  // L'écran principal s'affiche AVANT la fin du chargement des données (loadAll) : ouvrir une modale
+  // tout de suite donnerait une liste de comptes vide (vu en CI le 04/11). On attend les comptes
+  // du jeu de données de #21.
+  await expect.poll(()=>page.evaluate(()=>comptes.length),
+    {message:'comptes de l\'utilisateur de test non chargés (jeu de données #21 absent ?)',timeout:15_000})
+    .toBeGreaterThan(0);
 }
 
 // Date du jour à Paris, au format AAAA-MM-JJ (même calcul que dateLocaleISO de l'app).
