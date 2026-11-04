@@ -1349,7 +1349,8 @@ function openSoldeModal(compteId,compteName){
   renderSoldeHistory(compteId);
   resetSoldeFooter();
   document.getElementById('solde-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('modal-solde-montant').focus(),100);
+  // Pas de focus sur le montant si une ✕ a été cliquée entre-temps : il reste sur « Annuler »
+  setTimeout(()=>{if(soldeASupprimerId===null)document.getElementById('modal-solde-montant').focus();},100);
 }
 function closeSoldeModal(){
   document.getElementById('solde-modal').classList.remove('open');

@@ -158,6 +158,21 @@ test('croix ✕ : confirmation du relevé cliqué, Annuler ne supprime rien, Con
   expect(ecritures(base,'DELETE')).toHaveLength(1);
 });
 
+// Le focus automatique du montant est posé 100 ms après l'ouverture : une ✕ cliquée avant
+// ne doit pas perdre le focus sur « Annuler » (échec vu en CI, plus rapide qu'en local).
+test('✕ cliquée juste après l\'ouverture : le focus reste sur Annuler',async({app,base})=>{
+  await ouvrirSoldes(app,base);
+  await app.locator('#solde-modal').getByRole('button',{name:'Fermer'}).click();
+  await app.evaluate(()=>{
+    openSoldeModal('k1','TEST QA Compte courant');
+    document.querySelector('#solde-history-list [data-del-solde-id="s1"]').click();
+  });
+  await app.waitForTimeout(300);
+  await expect(app.locator('#solde-confirm-annuler')).toBeFocused();
+  await expect(confirmation(app)).toContainText('01/11/2026');
+  expect(ecritures(base)).toHaveLength(0);
+});
+
 test('erreur de la base à la suppression : message, le relevé reste, la confirmation reste proposée',async({app,base,journal})=>{
   journal.attendre(/deleteSoldeEntry/);
   journal.attendre(/status of 400/);
