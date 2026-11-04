@@ -141,8 +141,10 @@ test('historique des soldes : note en texte, la croix supprime ce solde seulemen
   await expect(lignes.nth(0).locator('.solde-entry-date')).toHaveText('2026-11-03 — TEST QA <u>souligné</u> "guillemets"');
   await expect(app.locator('#solde-history-list u')).toHaveCount(0);
 
-  // La croix de la ligne du 01/11 supprime s1, et seulement lui
+  // La croix de la ligne du 01/11 supprime s1, et seulement lui (après confirmation depuis #55)
   await lignes.filter({hasText:'2026-11-01'}).locator('[data-del-solde-id]').click();
+  await expect(app.locator('#solde-confirm-msg')).toContainText('01/11/2026');
+  await app.getByRole('button',{name:'Confirmer la suppression'}).click();
   await expect(lignes).toHaveCount(2);
   await expect(lignes.filter({hasText:'2026-11-01'})).toHaveCount(0);
   await expect(lignes.filter({hasText:'TEST QA à garder'})).toHaveCount(1);
