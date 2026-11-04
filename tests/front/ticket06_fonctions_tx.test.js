@@ -7,7 +7,8 @@ const fs=require('fs'),path=require('path');
 const fichier=process.argv[2]||path.join(__dirname,'..','..','index.html');
 const html=fs.readFileSync(fichier,'utf8');
 const debut=html.indexOf('// ── TRANSACTIONS : FONCTIONS PURES (#6)');
-const fin=html.indexOf('// ── MODAL TX');
+// Fin = début du bloc #45 (et non « MODAL TX ») : une erreur dans #45 ne fait pas échouer #6 (#9).
+const fin=html.indexOf('// ── DATE DU JOUR : FONCTION PURE (#45)');
 assert.ok(debut>0&&fin>debut,'bloc des fonctions pures introuvable dans '+fichier);
 const f=new Function(html.slice(debut,fin)+
   ';return {lireMontant,compteParDefaut,validerSaisieTx,construireLigneTx,messageErreurSupabase,libelleCompteTx,MONTANT_MAX};')();
