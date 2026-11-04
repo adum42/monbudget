@@ -35,7 +35,10 @@ const CORS={'access-control-allow-origin':'*','access-control-allow-headers':'*'
 const UTILISATEUR={id:'00000000-0000-4000-8000-0000000000a1',aud:'authenticated',role:'authenticated',email:'test.qa@exemple.invalid'};
 function donneesInitiales(){
   return {
-    categories:[{id:'c1',user_id:UTILISATEUR.id,nom:'TEST QA Courses',emoji:'🛒',couleur:'#22C97A',type:'les deux'}],
+    categories:[
+      {id:'c1',user_id:UTILISATEUR.id,nom:'TEST QA Courses',emoji:'🛒',couleur:'#22C97A',type:'les deux'},
+      {id:'c2',user_id:UTILISATEUR.id,nom:'TEST QA Loisirs',emoji:'🎮',couleur:'#8B5CF6',type:'les deux'},
+    ],
     comptes:[
       {id:'k1',user_id:UTILISATEUR.id,nom:'TEST QA Compte courant',type:'courant',par_defaut:true,couleur:'#5B6EF5',solde_initial:1000,date_solde_initial:'2026-09-30',plafond:null},
       {id:'k2',user_id:UTILISATEUR.id,nom:'TEST QA Livret',type:'livret',par_defaut:false,couleur:'#22C97A',solde_initial:500,date_solde_initial:'2026-09-30',plafond:null},
@@ -116,7 +119,10 @@ function creerFausseBase(){
       return route.fulfill({status:204,body:'',headers:CORS});
     }
     if(methode==='DELETE'){
+      const supprimees=b.tables[table].filter(l=>correspond(l,f)).map(l=>l.id);
       b.tables[table]=b.tables[table].filter(l=>!correspond(l,f));
+      // FK transactions.categorie_id « on delete set null » (#44)
+      if(table==='categories') b.tables.transactions.forEach(t=>{if(supprimees.includes(t.categorie_id)) t.categorie_id=null;});
       return route.fulfill({status:204,body:'',headers:CORS});
     }
     return route.fulfill({status:405,body:'',headers:CORS});

@@ -18,6 +18,7 @@ tests/
 │   ├── outils.js                     fixtures : faux Supabase, CDN locaux, contrôle du bandeau TEST
 │   ├── environnement.spec.js         démarrage sur TEST, bandeau, écran de connexion
 │   ├── transactions.spec.js          créer / supprimer une transaction, changer de mois, erreur base
+│   ├── categories.spec.js            supprimer une catégorie : confirmation, bonne catégorie, erreur base (#44)
 │   ├── fonctions-pures.spec.js       fonctions de index.html appelées dans la page (page.evaluate)
 │   └── connecte.spec.js              mêmes parcours sur la vraie base TEST
 └── sql/                              tests SQL (#25)
@@ -44,7 +45,7 @@ npx playwright test --headed            # en voyant le navigateur
 npx playwright test --ui                # mode interactif : pas à pas, avec l'état de la page
 ```
 
-Sans les variables `TEST_EMAIL` / `TEST_PASSWORD`, les 3 tests connectés sont **ignorés** (« skipped ») : c'est normal en local. Résultat attendu : `20 passed, 3 skipped`.
+Sans les variables `TEST_EMAIL` / `TEST_PASSWORD`, les 3 tests connectés sont **ignorés** (« skipped ») : c'est normal en local. Résultat attendu : `36 passed, 3 skipped`.
 
 **Session cloud de Claude** : le téléchargement du navigateur est bloqué ; utiliser le Chrome du système :
 

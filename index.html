@@ -139,6 +139,12 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .btn-view-all{padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:12px;white-space:nowrap;}
 .btn-view-all.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
 .confirm-delete-row{display:flex;align-items:center;gap:8px;margin-right:auto;}
+.confirm-cat{display:flex;flex-direction:column;gap:12px;width:100%;}
+.confirm-cat-msg{font-size:13px;line-height:1.45;color:var(--text);overflow-wrap:anywhere;}
+.confirm-cat .confirm-delete-row{flex-wrap:wrap;justify-content:flex-end;margin-right:0;}
+#cat-modal.suppression .modal-body>:not(.modal-error){display:none;}
+#cat-modal.suppression .modal-body{padding:0 24px;gap:0;}
+#cat-modal.suppression .modal-body>.modal-error{margin:16px 0;}
 .btn-confirm-delete{padding:9px 14px;background:var(--red);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;}
 .btn-dup{padding:9px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:13px;}
 .btn-dup:hover{border-color:var(--accent);color:var(--accent);}
@@ -396,6 +402,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <button class="modal-close" onclick="closeCatModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div class="modal-error" id="cat-modal-error" role="alert" style="display:none"></div>
       <div class="modal-field">
         <label>Nom</label>
         <input type="text" id="modal-cat-nom" placeholder="ex: Alimentation, Salaire...">
@@ -410,8 +417,8 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <div class="emoji-cats-row" id="emoji-cats"></div>
       <div class="emoji-grid" id="emoji-grid"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-danger" id="cat-modal-delete" style="display:none" onclick="deleteCatFromModal()">Supprimer</button>
+    <div class="modal-footer" id="cat-modal-footer">
+      <button class="btn-danger" id="cat-modal-delete" style="display:none" onclick="askDeleteCat()">Supprimer</button>
       <button class="btn-cancel" onclick="closeCatModal()">Annuler</button>
       <button class="btn-confirm" onclick="saveCat()">Enregistrer</button>
     </div>
@@ -888,21 +895,60 @@ function dupTx(){
   ouvrirModaleTx({...tx,id:null},'duplication');
 }
 
+// ══ DÉBUT FONCTIONS PURES CATÉGORIES (#44) ═══════════
+// Sans DOM ni Supabase : testables directement (tests/front/ticket44_categories.test.js).
+function trouverCategorie(liste,id){
+  if(id===null||id===undefined||id==='') return null;
+  return (liste||[]).find(c=>String(c.id)===String(id))||null;
+}
+// Texte de la confirmation : nomme la catégorie (à insérer avec textContent, jamais en HTML)
+function messageSuppressionCategorie(cat){
+  const nom=cat&&cat.nom?String(cat.nom):'sans nom';
+  const emoji=cat&&cat.emoji?String(cat.emoji):'📁';
+  return 'Supprimer la catégorie '+emoji+' '+nom+' ? Les transactions liées passeront en « Sans catégorie ».';
+}
+// ══ FIN FONCTIONS PURES CATÉGORIES (#44) ═════════════
+
 // ── MODAL CAT ─────────────────────────────────────────
+// catSuppressionDepuisListe : fenêtre ouverte par la croix ✕ de la liste (confirmation seule).
+let catSuppressionDepuisListe=false,deleteCatEnCours=false;
+function afficherErreurCat(message){
+  const el=document.getElementById('cat-modal-error');
+  el.textContent=message;el.style.display='block';
+}
+function effacerErreurCat(){
+  const el=document.getElementById('cat-modal-error');
+  el.textContent='';el.style.display='none';
+}
+function resetCatFooter(){
+  const f=document.getElementById('cat-modal-footer');
+  f.innerHTML=`<button class="btn-danger" id="cat-modal-delete" style="display:none" onclick="askDeleteCat()">Supprimer</button>
+    <button class="btn-cancel" onclick="closeCatModal()">Annuler</button>
+    <button class="btn-confirm" onclick="saveCat()">Enregistrer</button>`;
+  if(editingCatId) document.getElementById('cat-modal-delete').style.display='block';
+}
 function openCatModal(cat){
   editingCatId=cat?cat.id:null;
+  catSuppressionDepuisListe=false;
+  document.getElementById('cat-modal').classList.remove('suppression');
   selectedEmoji=cat?cat.emoji||'📁':'📁';
   document.getElementById('cat-modal-title').textContent=cat?'Modifier la catégorie':'Nouvelle catégorie';
   document.getElementById('modal-cat-nom').value=cat?cat.nom:'';
   document.getElementById('modal-emoji-preview').textContent=selectedEmoji;
   document.getElementById('emoji-search').value='';
-  document.getElementById('cat-modal-delete').style.display=cat?'block':'none';
+  effacerErreurCat();
+  resetCatFooter();
   currentEmojiCat=Object.keys(EMOJI_CATS)[0];
   initEmojiUI();
   document.getElementById('cat-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('modal-cat-nom').focus(),100);
+  setTimeout(()=>{if(!catSuppressionDepuisListe)document.getElementById('modal-cat-nom').focus();},100);
 }
-function closeCatModal(){document.getElementById('cat-modal').classList.remove('open');editingCatId=null;}
+// Toute fermeture (✕, Annuler, Échap, clic à l'extérieur) passe par ici (#44)
+function closeCatModal(){
+  document.getElementById('cat-modal').classList.remove('open','suppression');
+  editingCatId=null;catSuppressionDepuisListe=false;
+  effacerErreurCat();resetCatFooter();
+}
 async function saveCat(){
   const nom=document.getElementById('modal-cat-nom').value.trim();
   if(!nom) return;
@@ -914,10 +960,51 @@ async function saveCat(){
   }
   closeCatModal();await loadCategories();
 }
-async function deleteCatFromModal(){
+// Croix ✕ de la liste : confirmation de la catégorie de la ligne, et d'elle seule
+function demanderSuppressionCat(id){
+  const cat=trouverCategorie(categories,id);
+  if(!cat) return;
+  openCatModal(cat);
+  catSuppressionDepuisListe=true;
+  document.getElementById('cat-modal').classList.add('suppression');
+  document.getElementById('cat-modal-title').textContent='Supprimer la catégorie';
+  askDeleteCat();
+}
+// Bouton « Supprimer » (ou croix ✕) : confirmation en 2 temps, comme askDeleteTx
+function askDeleteCat(){
   if(!editingCatId) return;
-  await sb.from('categories').delete().eq('id',editingCatId);
-  closeCatModal();await loadCategories();
+  const cat=trouverCategorie(categories,editingCatId)||{nom:document.getElementById('modal-cat-nom').value,emoji:selectedEmoji};
+  const f=document.getElementById('cat-modal-footer');
+  f.innerHTML=`<div class="confirm-cat">
+    <div class="confirm-cat-msg" id="cat-confirm-msg"></div>
+    <div class="confirm-delete-row">
+      <button class="btn-cancel" id="cat-confirm-annuler" onclick="annulerSuppressionCat()">Annuler</button>
+      <button class="btn-confirm-delete" id="cat-confirm-supprimer" onclick="deleteCatFromModal()">Confirmer la suppression</button>
+    </div>
+  </div>`;
+  document.getElementById('cat-confirm-msg').textContent=messageSuppressionCategorie(cat);
+  if(catSuppressionDepuisListe) setTimeout(()=>{const b=document.getElementById('cat-confirm-annuler');if(b)b.focus();},100);
+}
+function annulerSuppressionCat(){
+  if(catSuppressionDepuisListe) closeCatModal(); else resetCatFooter();
+}
+async function deleteCatFromModal(){
+  if(!editingCatId||deleteCatEnCours) return;
+  const id=editingCatId;
+  const bouton=document.getElementById('cat-confirm-supprimer');
+  deleteCatEnCours=true;if(bouton)bouton.disabled=true;
+  let error=null;
+  try{({error}=await sb.from('categories').delete().eq('id',id));}catch(e){error=e;}
+  deleteCatEnCours=false;if(bouton)bouton.disabled=false;
+  if(error){
+    console.error('[monbudget] deleteCat',error);
+    askDeleteCat();   // la fenêtre reste ouverte, la confirmation reste proposée
+    afficherErreurCat('Suppression impossible : '+messageErreurSupabase(error));
+    return;
+  }
+  closeCatModal();
+  // Les transactions liées passent en « Sans catégorie » (on delete set null) : on les recharge
+  await loadCategories();await loadTransactions();renderAll();
 }
 
 // ══ DÉBUT FONCTIONS PURES COMPTES (#8) ════════════════
@@ -1448,9 +1535,12 @@ function renderCategories(){
       </div>
       <div class="cat-actions">
         <button class="btn-edit" onclick='openCatModal(${JSON.stringify(c)})'>✏️</button>
-        <button class="btn-del" onclick="deleteCatFromModal(); editingCatId='${c.id}'">✕</button>
+        <button class="btn-del" data-del-cat-id="${esc(c.id)}" title="Supprimer la catégorie" aria-label="Supprimer la catégorie">✕</button>
       </div>
     </div>`).join('');
+  list.querySelectorAll('[data-del-cat-id]').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();demanderSuppressionCat(btn.dataset.delCatId);});
+  });
 }
 
 function renderComptes(){
@@ -1666,7 +1756,10 @@ function renderCharts(){
 
 // Fermer modales au clic extérieur
 ['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',function(e){if(e.target===this) this.classList.remove('open');});
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target!==this) return;
+    if(id==='cat-modal') closeCatModal(); else this.classList.remove('open');
+  });
 });
 
 // Raccourcis clavier
@@ -1675,9 +1768,10 @@ document.addEventListener('keydown',function(e){
   const tag=document.activeElement.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if(e.key==='Escape'){
-    ['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
+    ['tx-modal','compte-modal','solde-modal'].forEach(id=>{
       document.getElementById(id).classList.remove('open');
     });
+    if(document.getElementById('cat-modal').classList.contains('open')) closeCatModal();
     editingTxId=null;deleteConfirmPending=false;
   }
   if(e.key==='n'||e.key==='N'){
