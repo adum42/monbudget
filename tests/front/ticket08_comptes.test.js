@@ -12,7 +12,9 @@ const extraire=(debutTxt,finTxt)=>{
   assert.ok(d>0&&f>d,'bloc introuvable dans '+fichier+' : '+debutTxt);
   return html.slice(d,f);
 };
-const bloc06=extraire('// ── TRANSACTIONS : FONCTIONS PURES (#6)','// ── MODAL TX');
+// Le bloc #6 s'arrête au début du bloc #45 (et non à « MODAL TX ») : une erreur dans #45
+// ne doit pas faire échouer les tests de #6 et #8 (#9).
+const bloc06=extraire('// ── TRANSACTIONS : FONCTIONS PURES (#6)','// ── DATE DU JOUR : FONCTION PURE (#45)');
 const bloc08=extraire('// ══ DÉBUT FONCTIONS PURES COMPTES (#8)','// ══ FIN FONCTIONS PURES COMPTES (#8)');
 const f=new Function(bloc06+'\n'+bloc08+
   ';return {TYPES_COMPTE,libelleTypeCompte,arrondiCentimes,ecartCompte,voyantCompte,totalPatrimoine,couleurCompte,formatDateFr,'+

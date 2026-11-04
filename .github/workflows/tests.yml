@@ -1,7 +1,10 @@
 # Tests automatiques de monbudget.
 # Un job par famille de tests : l'échec de l'un n'empêche pas de lire le résultat de l'autre.
-#   - tests-sql (#25)  : migrations rejouées sur un Postgres jetable, puis tests SQL. Aucun secret.
-#   - Playwright (#9)  : à ajouter ici comme un job séparé.
+#   - tests-sql (#25)   : migrations rejouées sur un Postgres jetable, puis tests SQL. Aucun secret.
+#   - tests-front (#9)  : tests unitaires des fonctions pures de index.html (Node seul). Aucun secret.
+#   - tests-e2e (#9)    : Playwright, app servie en local. D'abord sans connexion (Supabase simulé),
+#                         puis connecté à la base TEST avec les secrets TEST_EMAIL / TEST_PASSWORD.
+# Détails, lancement en local et lecture d'un échec : tests/README.md.
 
 name: Tests
 
@@ -47,3 +50,73 @@ jobs:
 
       - name: Rejouer les migrations et lancer les tests SQL
         run: tests/sql/run.sh
+
+  tests-front:
+    name: tests-front
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Aucune dépendance npm : chaque test extrait ses fonctions de index.html et les appelle.
+      - name: Tests unitaires des fonctions pures (#6, #8, #45)
+        run: npm run test:unitaires
+
+  tests-e2e:
+    name: tests-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Installer les dépendances (versions de tests/package-lock.json)
+        run: npm ci
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests sans connexion (Supabase simulé, 1280 et 390 px)
+        run: npx playwright test --project=bureau-1280 --project=mobile-390
+
+      # Uniquement les tests sans connexion : ce rapport ne contient aucun secret.
+      - name: Publier le rapport en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-playwright
+          path: tests/playwright-report
+          retention-days: 7
+
+      # Vraie base TEST `ebupazakzfbpptmlrzze`, utilisateur de test dédié.
+      # Lancé même si l'étape précédente a échoué ; aucun rapport publié (le repo est public).
+      # Sans les secrets (PR venant d'un fork), les tests sont ignorés avec un avertissement.
+      - name: Tests connectés à la base TEST
+        if: ${{ !cancelled() }}
+        env:
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
+            echo "::warning::Secrets TEST_EMAIL / TEST_PASSWORD absents : tests connectés ignorés."
+          fi
+          npx playwright test --project=connecte --reporter=list,github
