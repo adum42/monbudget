@@ -47,7 +47,7 @@ test('changer de mois',async({app})=>{
   await expect(libelle).toHaveText('novembre 2026');
 
   await app.click('#btn-prev-month');
-  await expect(libelle).toHaveText('octobre 2026');
+  await expect(libelle).toHaveText('octobre 2025');   // CASSÉ VOLONTAIREMENT (critère #9), annulé au commit suivant
   await expect(app.locator('.tx-item',{hasText:'TEST QA Loyer octobre'})).toBeVisible();
   await expect(app.locator('.tx-item',{hasText:'TEST QA Salaire'})).toHaveCount(0);
 
