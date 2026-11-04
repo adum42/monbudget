@@ -30,17 +30,17 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : du 29/10/2026 au 12/11/2026 à 00h00 (heure de Paris), donc jusqu'à la fin du 11/11. Tickets du sprint : label `sprint-1`.
 
-Ordre de traitement du sprint 1 (mis à jour le 04/11/2026 ; livrés : #2, #3, #4, #5, #6, #8, #9, #17, #18, #19, #20, #21, #22, #25, #30, #43, #45) :
+Ordre de traitement du sprint 1 (mis à jour le 04/11/2026 ; livrés : #2, #3, #4, #5, #6, #8, #9, #17, #18, #19, #20, #21, #22, #25, #30, #43, #44, #45) :
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
 | — | #9 Socle de tests Playwright et CI GitHub Actions | Quentin | **livré le 04/11** (PR #57) |
-| 1 | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | — |
-| 2 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44 (même bloc de `renderCategories`, branches successives) |
+| — | #44 Croix ✕ des catégories qui supprime la mauvaise catégorie | Fabien | **livré le 04/11** (PR #60) |
+| 1 | #49 Échappement HTML : catégories, listes déroulantes, historique des soldes, top 5 | Fabien | #44, livré : branche depuis `main` à jour (même bloc de `renderCategories`) ; prochaine session de Fabien |
 
 #8 (cartes comptes) est livré le 03/11 (PR #52, sans migration) ; le label `sprint-1` lui a été ajouté le même jour.
 
-Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48). Restent ouverts, **intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5. Les deux touchent `renderCategories` : faire #44 d'abord, puis #49 sur `main` à jour (jamais en parallèle). L'échappement des cartes comptes a été fait par #8.
+Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48). **Intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories, **livré le 04/11** (PR #60, sans migration), et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5, seul ticket restant du sprint. Les deux touchent `renderCategories` : #49 part de `main` à jour, après #44. L'échappement des cartes comptes a été fait par #8.
 
 La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
 
@@ -54,7 +54,7 @@ Depuis #8, le chef de projet peut modifier ses comptes depuis l'app (type `coura
 |---|---|
 | Transactions | métriques du mois (hors mouvements), boutons « + Entrée », « − Sortie » et « ⇄ Mouvement entre comptes », liste filtrable (type dont « Mouvements », catégorie, tri date / montant ↑↓), recherche texte (description + note), « Tout voir » (tous les mois), épingle cliquable, suivi Tricount ; nom du compte sous la description (« Depuis → Vers » pour un mouvement) ; les mouvements sont listés avec un badge « Mouvement » (#6) |
 | Comptes | patrimoine total (**somme des soldes calculés**), une carte par compte (#8) : solde calculé lu dans `v_soldes_comptes`, dernier solde banque et sa date, écart, voyant, plafond s'il est renseigné ; boutons ✏️ et « Saisir un solde » ; graphique d'évolution (courbes des relevés saisis et « Total patrimoine ») |
-| Catégories | CRUD des catégories avec sélecteur d'emoji |
+| Catégories | CRUD des catégories avec sélecteur d'emoji ; suppression avec confirmation (#44, voir ci-dessous) |
 | Statistiques | 3 KPIs (sorties, entrées, taux d'épargne vs mois précédent), barres horizontales par catégorie, évolution 6 mois, top 5 catégories (mouvements exclus partout) |
 
 Sélecteur de mois en en-tête. Authentification Supabase (connexion / inscription).
@@ -70,6 +70,15 @@ Champs : description, montant, date, type (**Entrée / Sortie / Mouvement** ; le
 
 Actions : enregistrer, dupliquer (date du jour), supprimer avec confirmation en 2 temps.
 Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La description reçoit le focus 100 ms après l'ouverture.
+
+### Fenêtre catégorie et suppression (#44)
+
+- **Croix ✕ de la liste** : `data-del-cat-id` + `addEventListener` (plus d'`onclick` concaténé) → `demanderSuppressionCat(id)` ouvre la fenêtre catégorie en **mode confirmation compact** (classe `suppression`, seul le pied est visible) : « Supprimer la catégorie <emoji> <nom> ? Les transactions liées passeront en « Sans catégorie ». », boutons **Annuler** (focus par défaut, 100 ms après l'ouverture) et **Confirmer la suppression**. La confirmation nomme toujours la catégorie de la ligne cliquée. « Annuler » ferme la fenêtre.
+- **Bouton « Supprimer » de la fenêtre** (après ✏️) : même confirmation, en 2 temps comme pour une transaction (`askDeleteCat`) ; « Annuler » revient à la fenêtre (`annulerSuppressionCat`).
+- **Erreur de la base** à la suppression : affichée en haut de la fenêtre avec son code (« Suppression impossible : » + `messageErreurSupabase`, zone `#cat-modal-error`), la fenêtre reste ouverte et la catégorie est conservée.
+- **Après suppression** : rechargement des catégories et des transactions ; les transactions de la catégorie apparaissent aussitôt en « Sans catégorie » (FK `on delete set null`).
+- **Fermeture** : toutes les fermetures (✕, Annuler, Échap, clic à l'extérieur) passent par `closeCatModal()`, qui remet `editingCatId` à `null`.
+- Non traité : la création et la modification (`saveCat`) n'affichent toujours pas les erreurs de la base (pas de ticket).
 
 ### Cartes comptes et voyant (#8)
 
@@ -107,11 +116,13 @@ Champs : nom, banque, type (**4 types** avec libellés : Compte courant, Livret 
 | Transactions : modale | `openTxModal` → `ouvrirModaleTx`, `lireSaisieTx`, `saveTx`, `setTxType`, `setTricount`, `dupTx`, `askDeleteTx`, `deleteTxFromModal`, `resetDeleteConfirm`, `afficherErreurTx`, `effacerErreurTx`, `optionsComptes` |
 | Comptes : fonctions pures (#8) | bloc « FONCTIONS PURES COMPTES (#8) » : `libelleTypeCompte`, `arrondiCentimes`, `ecartCompte`, `voyantCompte`, `totalPatrimoine`, `couleurCompte`, `formatDateFr`, `validerSaisieCompte`, `construireLigneCompte`, `compteDefautARetirer`, `messageErreurCompte`. Sans DOM ni réseau, testées par `tests/front/` |
 | Comptes / soldes | `openCompteModal`, `lireSaisieCompte`, `saveCompte`, `askDeleteCompte`, `deleteCompteFromModal`, `closeCompteModal`, `afficherErreurCompte`, `effacerErreurCompte`, `rechargerComptes`, `openSoldeModal`, `saveSoldeEntry` (upsert sur `compte_id,date`), `deleteSoldeEntry`, `renderSoldeHistory`, `getLastSolde`, `getPrevSolde` |
+| Catégories : fonctions pures (#44) | bloc « DÉBUT / FIN FONCTIONS PURES CATÉGORIES (#44) », juste avant `// ── MODAL CAT` : `trouverCategorie`, `messageSuppressionCategorie`. Sans DOM ni réseau, testées par `tests/front/` |
+| Catégories : fenêtre | `openCatModal`, `saveCat`, `demanderSuppressionCat` (croix ✕), `askDeleteCat`, `annulerSuppressionCat`, `deleteCatFromModal`, `closeCatModal`, `resetCatFooter`, `afficherErreurCat`, `effacerErreurCat` |
 | Navigation | `switchTab`, `changeMonth`, `toggleViewAll` |
 | Environnement | `choisirEnvironnement`, `ENV`, `DOMAINES_PROD` (#20) |
 | Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML : liste des transactions depuis #43, cartes comptes depuis #8 ; reste à faire : #49), `dateLocaleISO` (date du jour dans le fuseau local, bloc « DATE DU JOUR : FONCTION PURE (#45) » ; ne plus utiliser `toISOString` pour « aujourd'hui »), `txOfMonth` |
 
-État global : `currentUser`, `categories`, `transactions`, `comptes`, `soldes`, `soldesComptes` (lignes de `v_soldes_comptes`, #8), `currentMonth` (`AAAA-MM`), `viewAllMonths`.
+État global : `currentUser`, `categories`, `editingCatId` (catégorie ouverte dans la fenêtre, `null` à la fermeture), `transactions`, `comptes`, `soldes`, `soldesComptes` (lignes de `v_soldes_comptes`, #8), `currentMonth` (`AAAA-MM`), `viewAllMonths`.
 
 ### Environnements
 
@@ -159,22 +170,24 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 
 - `tests/sql/` : sur un Postgres jetable, `run.sh` rejoue `supabase/bootstrap/` puis **toutes** les migrations de `supabase/migrations/` (ordre des noms) sur des données fictives, puis les cas de `tests/sql/cas/` (127 cas au 03/11 : #3, #5 et non-régression des requêtes de `index.html`, dont 11 ajoutés par #8 : vue, `saveCompte`, bascule du compte par défaut, `23505`, `23514`). Mode d'emploi : `tests/sql/README.md`.
 - Chaque nouveau ticket de base ajoute son fichier `tests/sql/cas/ticketNN_<sujet>.sql` ; chaque nouvelle requête `sb.from(...)` du front est ajoutée à `cas/front_non_regression.sql`.
-- `tests/front/` : tests unitaires Node, sans dépendance, des fonctions pures de `index.html` extraites telles quelles entre leurs marqueurs : `ticket06_fonctions_tx.test.js` (#6, 47 cas), `ticket08_comptes.test.js` (#8, 85 cas), `ticket45_date_locale.test.js` (#45, 20 cas, avec `TZ=Europe/Paris`). Tous lancés par `cd tests && npm run test:unitaires`. Le bloc #6 s'arrête au début du bloc #45 : un nouveau bloc de fonctions pures doit avoir un marqueur de début **et** de fin, comme le bloc #8.
+- `tests/front/` : tests unitaires Node, sans dépendance, des fonctions pures de `index.html` extraites telles quelles entre leurs marqueurs : `ticket06_fonctions_tx.test.js` (#6, 47 cas), `ticket08_comptes.test.js` (#8, 85 cas), `ticket45_date_locale.test.js` (#45, 20 cas, avec `TZ=Europe/Paris`), `ticket44_categories.test.js` (#44, 16 cas). Tous lancés par `cd tests && npm run test:unitaires`. Le bloc #6 s'arrête au début du bloc #45 : un nouveau bloc de fonctions pures doit avoir un marqueur de début **et** de fin, comme le bloc #8.
 - `tests/e2e/` (#9) : Playwright (versions épinglées dans `tests/package.json`), `index.html` servi en local sur `127.0.0.1` (donc TEST), fuseau `Europe/Paris`.
-  - **Sans connexion** (projets `bureau-1280` et `mobile-390`, 20 tests) : CDN servis depuis `tests/node_modules`, faux Supabase en mémoire (`e2e/outils.js`) qui enregistre les écritures et peut renvoyer une erreur Postgres, horloge figée au 04/11/2026 10 h ; tout appel hors TEST et toute erreur console non attendue font échouer le test. Parcours : démarrage et bandeau TEST, écran de connexion, créer puis supprimer une transaction, changer de mois, erreur de la base affichée, fonctions pures appelées dans la page, ouverture juste après minuit.
+  - **Sans connexion** (projets `bureau-1280` et `mobile-390`, 20 tests) : CDN servis depuis `tests/node_modules`, faux Supabase en mémoire (`e2e/outils.js`) qui enregistre les écritures et peut renvoyer une erreur Postgres, horloge figée au 04/11/2026 10 h ; tout appel hors TEST et toute erreur console non attendue font échouer le test. Parcours : démarrage et bandeau TEST, écran de connexion, créer puis supprimer une transaction, changer de mois, erreur de la base affichée, fonctions pures appelées dans la page, ouverture juste après minuit ; suppression de catégorie (`e2e/categories.spec.js`, #44 : 9 parcours à 1280 et 390 px, un par critère d'acceptation plus la non-régression création / modification). Au 04/11 en local : 36 réussis, 3 ignorés (connectés, sans secrets).
+  - Fausse base (`e2e/outils.js`) : tables actuelles, filtres `eq`, 2 catégories (`c1` 🛒, `c2` 🎮) et `on delete set null` sur `transactions.categorie_id` (#44).
   - **Connectés** (projet `connecte`, 3 tests) : vraie base TEST `ebupazakzfbpptmlrzze` avec l'utilisateur de test (secrets `TEST_EMAIL` / `TEST_PASSWORD`, jamais lus par un agent) ; connexion, créer puis supprimer une transaction `TEST QA e2e …` (supprimée même en cas d'échec), changer de mois. Ignorés sans secrets. Sans trace ni capture, et sans rapport publié en CI : une trace Playwright ou l'instantané d'échec contiennent le mot de passe en clair, et le repo est public.
-  - Un nouveau parcours s'ajoute sur le modèle de `e2e/transactions.spec.js`. Dans une modale, attendre le focus automatique (100 ms après l'ouverture : description de la modale transaction, `#modal-c-nom` de la modale compte) avant de remplir.
+  - Un nouveau parcours s'ajoute sur le modèle de `e2e/transactions.spec.js` ou `e2e/categories.spec.js`. Dans une modale, attendre le focus automatique (100 ms après l'ouverture : description de la modale transaction, `#modal-c-nom` de la modale compte, `#modal-cat-nom` de la fenêtre catégorie, « Annuler » de la confirmation ouverte par la croix ✕) avant de remplir.
 - GitHub Actions `.github/workflows/tests.yml`, à chaque PR et push sur `main` : `tests-sql` (Postgres 17, sans secret), `tests-front` (unitaires), `tests-e2e` (Playwright sans connexion, rapport publié en artefact en cas d'échec ; puis connecté, sans rapport).
 - `main` est protégée : merge uniquement par PR, avec les checks `tests-sql`, `tests-front` et `tests-e2e` verts (les deux derniers depuis le 04/11/2026).
 - Recette navigateur manuelle de Quentin (preview ou `localhost`, contrôle du bandeau) : toujours possible pour ce que les tests automatiques ne couvrent pas.
 
 ### Dette technique connue
 
-- Erreurs Supabase non affichées : réglé pour les transactions (#6) et les comptes (#8). Restent silencieuses les écritures des catégories (`saveCat`, `deleteCatFromModal` : suppression traitée par #44) et des soldes banque (`saveSoldeEntry`, `deleteSoldeEntry` : pas de ticket, relevé par Quentin le 03/11).
+- Erreurs Supabase non affichées : réglé pour les transactions (#6) et les comptes (#8). Suppression de catégorie réglée par #44. Restent silencieuses la création et la modification des catégories (`saveCat`, pas de ticket, signalé par Fabien sur #44) et des soldes banque (`saveSoldeEntry`, `deleteSoldeEntry` : pas de ticket, relevé par Quentin le 03/11).
 - Textes saisis insérés sans échappement HTML (liste des transactions corrigée par #43, cartes comptes par #8) : catégories, listes déroulantes, historique des soldes et top 5 (#49).
 - Deux « patrimoine » différents dans l'onglet Comptes (relevé par Quentin, #8) : le « Patrimoine total » du haut est la somme des **soldes calculés**, la courbe « Total patrimoine » du graphique est la somme des **derniers relevés** saisis à chaque date (`renderChartComptes`). Même nom, chiffres possiblement différents. Pas de ticket.
 - Page ouverte pendant le passage de minuit : la modale propose la nouvelle date mais l'en-tête garde l'ancien mois jusqu'au rechargement (préexistant, pas de ticket ; la date du jour elle-même est corrigée par #45).
 - Erreur de chargement des transactions : la liste l'affiche, mais les métriques gardent les données précédentes (non bloquant, pas de ticket).
+- `Échap` ne ferme aucune modale quand le focus est dans un champ (règle globale du raccourci clavier ; ex. champ « Nom » de la fenêtre catégorie). Pas de ticket, signalé par Fabien sur #44.
 - Aucune icône déclarée : 404 sur `/favicon.ico` dans la console (cosmétique).
 - Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique, toujours présent après #8 ; pas de défilement horizontal).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
@@ -219,6 +232,7 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 | 04/11/2026 | Carte « Top 5 catégories de dépenses » laissée masquée quand le mois affiché n'a aucune sortie (comportement de `renderStatsKpis` depuis la session 2) ; #49 ne change que l'échappement | comportement voulu, pas un bug |
 | 04/11/2026 | Checks `tests-front` et `tests-e2e` obligatoires sur `main`, en plus de `tests-sql` (#9) | une PR qui casse un parcours ou une fonction pure ne peut plus être mergée |
 | 04/11/2026 | Tests connectés en CI sans trace, capture ni rapport publié (#9) | le repo est public et une trace contient la saisie du mot de passe |
+| 04/11/2026 | Suppression de catégorie : la croix ✕ ouvre la fenêtre catégorie en mode confirmation compact (pas de nouvelle modale) ; « Annuler » ferme la fenêtre si on vient de la croix, revient à l'édition si on vient du bouton « Supprimer » (#44) | une seule fenêtre à maintenir, même confirmation en 2 temps que les transactions |
 | 03/11/2026 | Les soldes des comptes suivent les opérations (entrée = crédit, sortie = débit, mouvement = débit de « Depuis » et crédit de « Vers ») pour voir l'écart avec le solde réel : calcul par `v_soldes_comptes` (#5), affichage par #8, pas de nouveau ticket | besoin déjà couvert |
 
 Décisions en attente : voir les tickets labellisés `decision`.
