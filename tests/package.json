@@ -4,7 +4,7 @@
   "description": "Tests de monbudget : unitaires (Node seul) et de bout en bout (Playwright). Voir tests/README.md.",
   "scripts": {
     "test": "npm run test:unitaires && npm run test:e2e",
-    "test:unitaires": "node front/ticket06_fonctions_tx.test.js && node front/ticket08_comptes.test.js && TZ=Europe/Paris node front/ticket45_date_locale.test.js && node front/ticket44_categories.test.js",
+    "test:unitaires": "node front/ticket06_fonctions_tx.test.js && node front/ticket08_comptes.test.js && TZ=Europe/Paris node front/ticket45_date_locale.test.js && node front/ticket44_categories.test.js && node front/ticket55_soldes.test.js",
     "test:e2e": "playwright test",
     "rapport": "playwright show-report"
   },

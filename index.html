@@ -217,6 +217,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .solde-entry{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--surface2);border-radius:6px;font-size:12px;}
 .solde-entry-date{color:var(--muted);}
 .solde-entry-montant{font-weight:600;font-family:'Syne',sans-serif;color:var(--green);}
+.solde-entry.a-supprimer{box-shadow:inset 0 0 0 1px var(--red);}
 
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -467,6 +468,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <button class="modal-close" onclick="closeSoldeModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div class="modal-error" id="solde-modal-error" role="alert" style="display:none"></div>
       <div style="font-size:13px;color:var(--muted);padding:10px;background:var(--surface2);border-radius:var(--radius-sm);">Renseigne le montant total présent sur ce compte à la date choisie.</div>
       <div class="modal-row">
         <div class="modal-field"><label>Montant total (€)</label><input type="number" id="modal-solde-montant" placeholder="0.00" step="0.01"></div>
@@ -475,9 +477,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <div class="modal-field"><label>Note (optionnel)</label><input type="text" id="modal-solde-note" placeholder="ex: Après virement de salaire..."></div>
       <div id="solde-history-list"></div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="solde-modal-footer">
       <button class="btn-cancel" onclick="closeSoldeModal()">Fermer</button>
-      <button class="btn-confirm" onclick="saveSoldeEntry()">Enregistrer</button>
+      <button class="btn-confirm" id="solde-modal-save" onclick="saveSoldeEntry()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1164,6 +1166,33 @@ function messageErreurCompte(error,action){
 }
 // ══ FIN FONCTIONS PURES COMPTES (#8) ══════════════════
 
+// ══ DÉBUT FONCTIONS PURES SOLDES BANQUE (#55) ═════════
+// Sans DOM ni Supabase : testables directement (tests/front/ticket55_soldes.test.js).
+// Utilisent lireMontant et MONTANT_MAX (#6), formatDateFr et arrondiCentimes (#8).
+
+// Vérifie la saisie d'un relevé. Renvoie un message d'erreur, ou null si tout est bon.
+// saisie : {montant (nombre ou NaN), date (AAAA-MM-JJ ou vide)}. Un relevé peut être négatif ou nul.
+function validerSaisieSolde(saisie){
+  const m=saisie?saisie.montant:NaN;
+  if(typeof m!=='number'||!Number.isFinite(m)) return 'Indiquez le montant du relevé (un nombre, par exemple 1250,40).';
+  if(Math.abs(Math.round(m*100)/100)>MONTANT_MAX) return 'Le montant ne peut pas dépasser 9 999 999 999,99 € (en valeur absolue).';
+  if(!saisie.date||!/^\d{4}-\d{2}-\d{2}$/.test(String(saisie.date))) return 'Indiquez la date du relevé.';
+  return null;
+}
+// Relevé de la ligne cliquée (data-del-solde-id est toujours du texte)
+function trouverSolde(liste,id){
+  if(id===null||id===undefined||id==='') return null;
+  return (liste||[]).find(s=>String(s.id)===String(id))||null;
+}
+// Texte de la confirmation (à insérer avec textContent, jamais en HTML)
+function messageSuppressionSolde(releve){
+  const date=releve?formatDateFr(releve.date):'';
+  const m=releve?arrondiCentimes(releve.montant):null;
+  const montant=m===null?'?':m.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return 'Supprimer le relevé du '+(date||'?')+' ('+montant+' €)\u00a0?';
+}
+// ══ FIN FONCTIONS PURES SOLDES BANQUE (#55) ═══════════
+
 // ── MODAL COMPTE ──────────────────────────────────────
 let editingCompteId=null;
 let saveCompteEnCours=false;
@@ -1288,34 +1317,105 @@ async function rechargerComptes(){
 }
 
 // ── MODAL SOLDE ───────────────────────────────────────
-let currentSoldeCompteId=null;
+// Erreurs affichées en haut de la fenêtre, saisie conservée (#55).
+// soldeASupprimerId : relevé dont la suppression attend confirmation (une seule à la fois).
+let currentSoldeCompteId=null,soldeASupprimerId=null,saveSoldeEnCours=false,deleteSoldeEnCours=false;
+function afficherErreurSolde(message){
+  const el=document.getElementById('solde-modal-error');
+  el.textContent=message;el.style.display='block';
+}
+function effacerErreurSolde(){
+  const el=document.getElementById('solde-modal-error');
+  el.textContent='';el.style.display='none';
+}
+function resetSoldeFooter(){
+  soldeASupprimerId=null;
+  document.getElementById('solde-modal-footer').innerHTML=`<button class="btn-cancel" onclick="closeSoldeModal()">Fermer</button>
+      <button class="btn-confirm" id="solde-modal-save" onclick="saveSoldeEntry()">Enregistrer</button>`;
+  marquerSoldeASupprimer();
+}
+// Repère dans l'historique la ligne dont la suppression est demandée
+function marquerSoldeASupprimer(){
+  document.querySelectorAll('#solde-history-list .solde-entry').forEach(l=>
+    l.classList.toggle('a-supprimer',soldeASupprimerId!==null&&l.dataset.soldeId===String(soldeASupprimerId)));
+}
 function openSoldeModal(compteId,compteName){
   currentSoldeCompteId=compteId;
   document.getElementById('solde-modal-title').textContent='💰 '+compteName;
   document.getElementById('modal-solde-montant').value='';
   document.getElementById('modal-solde-note').value='';
   document.getElementById('modal-solde-date').value=dateLocaleISO();
+  effacerErreurSolde();
   renderSoldeHistory(compteId);
+  resetSoldeFooter();
   document.getElementById('solde-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('modal-solde-montant').focus(),100);
+  // Pas de focus sur le montant si une ✕ a été cliquée entre-temps : il reste sur « Annuler »
+  setTimeout(()=>{if(soldeASupprimerId===null)document.getElementById('modal-solde-montant').focus();},100);
 }
-function closeSoldeModal(){document.getElementById('solde-modal').classList.remove('open');currentSoldeCompteId=null;}
+function closeSoldeModal(){
+  document.getElementById('solde-modal').classList.remove('open');
+  currentSoldeCompteId=null;
+  effacerErreurSolde();resetSoldeFooter();
+}
 async function saveSoldeEntry(){
-  const montant=parseFloat(document.getElementById('modal-solde-montant').value);
+  if(saveSoldeEnCours) return;
+  const montant=lireMontant(document.getElementById('modal-solde-montant').value);
   const date=document.getElementById('modal-solde-date').value;
   const note=document.getElementById('modal-solde-note').value.trim();
-  if(isNaN(montant)||!date) return;
-  await sb.from('soldes').upsert([{user_id:currentUser.id,compte_id:currentSoldeCompteId,date,montant,note}],{onConflict:'compte_id,date'});
+  const invalide=validerSaisieSolde({montant,date});
+  if(invalide){afficherErreurSolde(invalide);return;}   // aucune requête envoyée
+  const compteId=currentSoldeCompteId;
+  const bouton=document.getElementById('solde-modal-save');
+  saveSoldeEnCours=true;if(bouton)bouton.disabled=true;
+  let error=null;
+  try{
+    ({error}=await sb.from('soldes').upsert([{user_id:currentUser.id,compte_id:compteId,date,montant:Math.round(montant*100)/100,note}],{onConflict:'compte_id,date'}));
+  }catch(e){error=e;}
+  saveSoldeEnCours=false;if(bouton)bouton.disabled=false;
+  if(error){
+    console.error('[monbudget] saveSoldeEntry',error);
+    afficherErreurSolde('Relevé non enregistré : '+messageErreurSupabase(error));
+    return;   // fenêtre ouverte, montant, date et note conservés
+  }
+  effacerErreurSolde();
   document.getElementById('modal-solde-montant').value='';
   document.getElementById('modal-solde-note').value='';
   await loadComptes();
-  renderSoldeHistory(currentSoldeCompteId);
+  renderSoldeHistory(compteId);
   renderComptes();renderChartComptes();
 }
-async function deleteSoldeEntry(id){
-  await sb.from('soldes').delete().eq('id',id);
+// Croix ✕ de l'historique : confirmation en 2 temps, comme askDeleteTx et #44
+function demanderSuppressionSolde(id){
+  const releve=trouverSolde(soldes,id);
+  if(!releve) return;
+  soldeASupprimerId=releve.id;
+  document.getElementById('solde-modal-footer').innerHTML=`<div class="confirm-cat">
+    <div class="confirm-cat-msg" id="solde-confirm-msg"></div>
+    <div class="confirm-delete-row">
+      <button class="btn-cancel" id="solde-confirm-annuler" onclick="resetSoldeFooter()">Annuler</button>
+      <button class="btn-confirm-delete" id="solde-confirm-supprimer" onclick="deleteSoldeEntry()">Confirmer la suppression</button>
+    </div>
+  </div>`;
+  document.getElementById('solde-confirm-msg').textContent=messageSuppressionSolde(releve);
+  marquerSoldeASupprimer();
+  document.getElementById('solde-confirm-annuler').focus();
+}
+async function deleteSoldeEntry(){
+  if(soldeASupprimerId===null||deleteSoldeEnCours) return;
+  const id=soldeASupprimerId,compteId=currentSoldeCompteId;
+  const bouton=document.getElementById('solde-confirm-supprimer');
+  deleteSoldeEnCours=true;if(bouton)bouton.disabled=true;
+  let error=null;
+  try{({error}=await sb.from('soldes').delete().eq('id',id));}catch(e){error=e;}
+  deleteSoldeEnCours=false;if(bouton)bouton.disabled=false;
+  if(error){
+    console.error('[monbudget] deleteSoldeEntry',error);
+    afficherErreurSolde('Relevé non supprimé : '+messageErreurSupabase(error));
+    return;   // le relevé reste, la confirmation reste proposée
+  }
+  effacerErreurSolde();resetSoldeFooter();
   await loadComptes();
-  renderSoldeHistory(currentSoldeCompteId);
+  renderSoldeHistory(compteId);
   renderComptes();renderChartComptes();
 }
 function renderSoldeHistory(compteId){
@@ -1324,7 +1424,7 @@ function renderSoldeHistory(compteId){
   if(!entries.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;">Aucun solde enregistré</div>';return;}
   el.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;">Historique</div>
   <div class="solde-history">${entries.map(e=>`
-    <div class="solde-entry">
+    <div class="solde-entry" data-solde-id="${esc(e.id)}">
       <span class="solde-entry-date">${esc(e.date)}${e.note?' — '+esc(e.note):''}</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="solde-entry-montant">${fmt(e.montant)} €</span>
@@ -1332,8 +1432,9 @@ function renderSoldeHistory(compteId){
       </div>
     </div>`).join('')}</div>`;
   el.querySelectorAll('[data-del-solde-id]').forEach(btn=>{
-    btn.addEventListener('click',ev=>{ev.stopPropagation();deleteSoldeEntry(btn.dataset.delSoldeId);});
+    btn.addEventListener('click',ev=>{ev.stopPropagation();demanderSuppressionSolde(btn.dataset.delSoldeId);});
   });
+  marquerSoldeASupprimer();
 }
 
 // ── AUTH ──────────────────────────────────────────────
@@ -1768,7 +1869,7 @@ function renderCharts(){
 ['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target!==this) return;
-    if(id==='cat-modal') closeCatModal(); else this.classList.remove('open');
+    if(id==='cat-modal') closeCatModal(); else if(id==='solde-modal') closeSoldeModal(); else this.classList.remove('open');
   });
 });
 
@@ -1778,9 +1879,10 @@ document.addEventListener('keydown',function(e){
   const tag=document.activeElement.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if(e.key==='Escape'){
-    ['tx-modal','compte-modal','solde-modal'].forEach(id=>{
+    ['tx-modal','compte-modal'].forEach(id=>{
       document.getElementById(id).classList.remove('open');
     });
+    if(document.getElementById('solde-modal').classList.contains('open')) closeSoldeModal();
     if(document.getElementById('cat-modal').classList.contains('open')) closeCatModal();
     editingTxId=null;deleteConfirmPending=false;
   }
