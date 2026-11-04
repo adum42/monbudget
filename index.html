@@ -1325,12 +1325,15 @@ function renderSoldeHistory(compteId){
   el.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;">Historique</div>
   <div class="solde-history">${entries.map(e=>`
     <div class="solde-entry">
-      <span class="solde-entry-date">${e.date}${e.note?' — '+e.note:''}</span>
+      <span class="solde-entry-date">${esc(e.date)}${e.note?' — '+esc(e.note):''}</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="solde-entry-montant">${fmt(e.montant)} €</span>
-        <button class="btn-del" onclick="deleteSoldeEntry('${e.id}')">✕</button>
+        <button class="btn-del" data-del-solde-id="${esc(e.id)}" title="Supprimer ce solde" aria-label="Supprimer ce solde">✕</button>
       </div>
     </div>`).join('')}</div>`;
+  el.querySelectorAll('[data-del-solde-id]').forEach(btn=>{
+    btn.addEventListener('click',ev=>{ev.stopPropagation();deleteSoldeEntry(btn.dataset.delSoldeId);});
+  });
 }
 
 // ── AUTH ──────────────────────────────────────────────
@@ -1520,9 +1523,9 @@ function renderTransactions(){
   });
 }
 function updateCatSelect(){
-  const opts='<option value="">Sans catégorie</option>'+categories.map(c=>`<option value="${c.id}">${c.emoji||'📁'} ${c.nom}</option>`).join('');
-  document.getElementById('modal-tx-cat').innerHTML=opts;
-  document.getElementById('f-cat').innerHTML='<option value="all">Toutes catégories</option>'+categories.map(c=>`<option value="${c.id}">${c.emoji||'📁'} ${c.nom}</option>`).join('');
+  const optionsCat=categories.map(c=>`<option value="${esc(c.id)}">${esc(c.emoji||'📁')} ${esc(c.nom)}</option>`).join('');
+  document.getElementById('modal-tx-cat').innerHTML='<option value="">Sans catégorie</option>'+optionsCat;
+  document.getElementById('f-cat').innerHTML='<option value="all">Toutes catégories</option>'+optionsCat;
 }
 function renderCategories(){
   const list=document.getElementById('cat-list');
@@ -1530,14 +1533,21 @@ function renderCategories(){
   list.innerHTML=categories.map(c=>`
     <div class="cat-item">
       <div class="cat-left">
-        <span class="cat-emoji-display">${c.emoji||'📁'}</span>
-        <span class="cat-name">${c.nom}</span>
+        <span class="cat-emoji-display">${esc(c.emoji||'📁')}</span>
+        <span class="cat-name">${esc(c.nom)}</span>
       </div>
       <div class="cat-actions">
-        <button class="btn-edit" onclick='openCatModal(${JSON.stringify(c)})'>✏️</button>
+        <button class="btn-edit" data-cat-id="${esc(c.id)}">✏️</button>
         <button class="btn-del" data-del-cat-id="${esc(c.id)}" title="Supprimer la catégorie" aria-label="Supprimer la catégorie">✕</button>
       </div>
     </div>`).join('');
+  list.querySelectorAll('[data-cat-id]').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const cat=trouverCategorie(categories,btn.dataset.catId);
+      if(cat) openCatModal(cat);
+    });
+  });
   list.querySelectorAll('[data-del-cat-id]').forEach(btn=>{
     btn.addEventListener('click',e=>{e.stopPropagation();demanderSuppressionCat(btn.dataset.delCatId);});
   });
@@ -1714,7 +1724,7 @@ function renderStatsKpis(){
   top5El.innerHTML=top5.map(([name,total],i)=>`
     <div class="top5-item">
       <span class="top5-rank">${i+1}</span>
-      <span class="top5-name">${name}</span>
+      <span class="top5-name">${esc(name)}</span>
       <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.round(total/maxM*100)}%"></div></div>
       <span class="top5-amount">${fmt(total)} €</span>
     </div>`).join('');
