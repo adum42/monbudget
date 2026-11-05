@@ -19,7 +19,7 @@ Hors périmètre (décision du 29/10/2026) : **import bancaire CSV/OFX**.
 
 | Étape | Fonctionnalité | Maquette | État |
 |---|---|---|---|
-| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6) et cartes comptes (#8) livrés ; filtre par compte (#7) et validation de l'étape (#10) à venir |
+| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6), cartes comptes (#8) et soldes recalculés après chaque saisie (#66) livrés ; virements internes en deux opérations (#68 → #69 → #70), retouches de la liste et de la saisie (#71 à #78) et validation de l'étape (#10) à venir |
 | 2 | Pointage et rapprochement bancaire | `docs/maquettes/2-pointage.html` | à faire |
 | 3 | Cagnottes par thème | `docs/maquettes/4-cagnottes.html` | à faire |
 | 4 | Suivi de l'épargne mensuelle | `docs/maquettes/3-epargne.html` | à faire |
@@ -45,7 +45,23 @@ Tous les tickets du label `sprint-1` sont livrés, y compris #55, intégré le 0
 
 Bugs du 03/11 (front, `taille:S`, sans migration) : #45 date du jour en UTC et #43 échappement HTML de la liste des transactions sont **livrés** (PR #47 et #48). **Intégrés au sprint 1** (décision du chef de projet, 03/11) : #44 croix ✕ des catégories, **livré le 04/11** (PR #60, sans migration), et #49 échappement HTML des catégories, listes déroulantes, historique des soldes et top 5, **livré le 04/11** (PR #62, sans migration), fait après #44 sur `main` à jour. L'échappement des cartes comptes a été fait par #8.
 
-La ressaisie par le chef de projet des transactions depuis le 01/10 sur la prod est reportée (03/11) ; elle ne bloque aucun ticket.
+#66 (soldes des comptes non mis à jour après une saisie) est **livré le 05/11** (PR #67, sans migration) : `saveTx()` et `deleteTxFromModal()` rechargent transactions **et** comptes (`rechargerApresTx`).
+
+Le chef de projet a commencé sa saisie sur la prod **au 01/11/2026**, avec les soldes initiaux de ses comptes **au 31/10/2026** (05/11).
+
+**Backlog du 05/11/2026** (étape 1, hors sprint 1) — ordre conseillé :
+
+| Ordre | Ticket | Agent | Dépend de |
+|---|---|---|---|
+| 1 | #68 Catégorie « Mouvement de compte » et retrait du type `mouvement` | Sylvie | — (migration : local → TEST → PROD) |
+| 2 | #69 Retirer les mouvements et exclure des stats la catégorie « Mouvement de compte » | Fabien | #68 en prod |
+| 3 | #70 Indicateur « Mouvements de compte » en tête de la liste des transactions | Fabien | #69 |
+| en parallèle de #68 | #71 Les fenêtres ne se ferment plus au clic extérieur · #77 croix ✕ de la recherche · #72 filtre par compte et sous-total · #58 modale ouverte avant la fin du chargement | Fabien | — |
+| après #69 | #73 bouton unique « Nouvelle opération » et modale colorée · #74 alléger les lignes de la liste · #76 pastille couleur du compte (après #74) | Fabien | #69 |
+| ensuite | #78 emojis des catégories · #54 libellé du graphique des comptes · #56 « € » à 390 px · #24 contrôle d'appartenance | Fabien / Sylvie | — |
+| fin | #10 Validation de l'étape 1 (mise à jour le 05/11) | Quentin | tout le jalon |
+
+#7 (filtre par compte) est fermé, remplacé par #72 ; #75 (« Hors Tricount ») est fusionné dans #74.
 
 Depuis #8, le chef de projet peut modifier ses comptes depuis l'app (type `courant` proposé, plafond et couleur pour tous les types) : la consigne « ne pas modifier un compte avant #8 » est levée.
 
@@ -158,7 +174,7 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 |---|---|---|
 | `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable ; compte source d'un mouvement), `compte_dest_id` (nullable ; compte destination d'un mouvement), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Contrainte `transactions_mouvement_comptes_check` : un `mouvement` a `compte_id` et `compte_dest_id` renseignés et différents ; une entrée ou une sortie n'a pas de `compte_dest_id`. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées. Trigger `transactions_verifier_comptes` (avant insertion ou modification, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503`. Colonne `direction` **supprimée** (#3). Utilisés par l'interface depuis #6. En prod, les 58 transactions d'origine ont été purgées le 03/11 (#4, copie dans `backup_v1.transactions`). |
 | `categories` | `nom`, `type` ∈ {entrée, sortie, les deux}, `couleur`, `emoji` | |
-| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. Toutes les colonnes sont éditables depuis la modale compte depuis #8. En prod (#4, 03/11) : **7 comptes** avec leur solde initial au soir du 30/09/2026 (3 `courant` dont le compte par défaut, 3 `livret`, 1 `investissement`), `plafond` vide et couleur par défaut, à renseigner par le chef de projet depuis l'app ; les 3 anciens comptes et leurs 5 soldes banque ont été supprimés. |
+| `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. Toutes les colonnes sont éditables depuis la modale compte depuis #8. En prod (#4, 03/11) : **7 comptes** avec leur solde initial au soir du 30/09/2026, ramené par le chef de projet au **31/10/2026** (05/11) (3 `courant` dont le compte par défaut, 3 `livret`, 1 `investissement`), `plafond` vide et couleur par défaut, à renseigner par le chef de projet depuis l'app ; les 3 anciens comptes et leurs 5 soldes banque ont été supprimés. |
 | `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Soldes banque saisis à la main (relevés). |
 
 Vue `v_soldes_comptes` (#5, migration `202611031145_vue_soldes_comptes.sql`, en prod le 03/11) : une ligne par compte de l'utilisateur, `security_invoker = on` (soumise à la RLS de l'utilisateur qui l'interroge).
@@ -195,14 +211,15 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 ### Dette technique connue
 
 - Erreurs Supabase non affichées : réglé pour les transactions (#6) et les comptes (#8). Suppression de catégorie réglée par #44. Soldes banque réglés par #55. Restent silencieuses la création et la modification des catégories (`saveCat`, pas de ticket, signalé par Fabien sur #44).
-- Deux « patrimoine » différents dans l'onglet Comptes (relevé par Quentin, #8) : le « Patrimoine total » du haut est la somme des **soldes calculés**, la courbe « Total patrimoine » du graphique est la somme des **derniers relevés** saisis à chaque date (`renderChartComptes`). Même nom, chiffres possiblement différents. Pas de ticket.
+- Deux « patrimoine » différents dans l'onglet Comptes (relevé par Quentin, #8) : le « Patrimoine total » du haut est la somme des **soldes calculés**, la courbe « Total patrimoine » du graphique est la somme des **derniers relevés** saisis à chaque date (`renderChartComptes`). Même nom, chiffres possiblement différents : #54.
 - Page ouverte pendant le passage de minuit : la modale propose la nouvelle date mais l'en-tête garde l'ancien mois jusqu'au rechargement (préexistant, pas de ticket ; la date du jour elle-même est corrigée par #45).
 - Erreur de chargement des transactions : la liste l'affiche, mais les métriques gardent les données précédentes (non bloquant, pas de ticket).
 - `Échap` ne ferme aucune modale quand le focus est dans un champ (règle globale du raccourci clavier ; ex. champ « Nom » de la fenêtre catégorie). Pas de ticket, signalé par Fabien sur #44.
 - Aucune icône déclarée : 404 sur `/favicon.ico` dans la console (cosmétique).
-- Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique, toujours présent après #8 ; pas de défilement horizontal).
+- Affichage à 390 px (#30) : nom de catégorie très long coupé dans « Sorties par catégorie », « € » seul à la ligne sur le patrimoine total (cosmétique, toujours présent après #8 : #56 ; pas de défilement horizontal).
 - Pas de contrôle d'appartenance sur `soldes.compte_id` ni `transactions.categorie_id` (la RLS ne filtre pas les lignes référencées par une clé étrangère) : #24.
 - Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
+- Recherche du sélecteur d'emoji des catégories inopérante : saisir un mot affiche tous les emojis (aucun mot-clé) : #78.
 - Juste après la connexion, l'écran principal s'affiche avant la fin du chargement des données : une modale transaction ouverte dans l'intervalle a des listes de comptes vides (trouvé par #9) : #58.
 
 ## 4. Décisions
@@ -212,12 +229,12 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 | — | Graphique camembert remplacé par barres horizontales | lisibilité, choisi après 3 aperçus |
 | — | Top 5 = cumul par catégorie | plus utile que les 5 plus grosses opérations |
 | — | Nouvelle transaction épinglée par défaut | choix du chef de projet |
-| — | Les mouvements sont exclus de toutes les stats | ce sont des virements internes |
+| — | Les mouvements sont exclus de toutes les stats **Remplacée le 05/11/2026.** | ce sont des virements internes |
 | 29/10/2026 | Pas d'import bancaire | choix du chef de projet |
 | 29/10/2026 | Équipe : coach, supabase, front, qa ; backlog dans GitHub Issues | voir `CLAUDE.md` |
 | 29/10/2026 | Les agents ont un prénom : Corentin (coach), Sylvie (supabase), Fabien (front), Quentin (qa) ; labels et préfixes de tickets inchangés | plus simple à appeler, voir `CLAUDE.md` |
 | 29/10/2026 | Sauvegarde v1 avant refonte (branche `sauvegarde/v1`, schéma `backup_v1`) ; une sauvegarde avant chaque étape | retour arrière rapide, voir `docs/RESTAURATION.md` |
-| 29/10/2026 | Virement = une seule transaction `mouvement` avec `compte_id` (source) et `compte_dest_id` (destination) ; `direction` abandonnée (#2, option A) | une ligne = un virement, pas de demi-virement possible |
+| 29/10/2026 | Virement = une seule transaction `mouvement` avec `compte_id` (source) et `compte_dest_id` (destination) ; `direction` abandonnée (#2, option A) **Remplacée le 05/11/2026.** | une ligne = un virement, pas de demi-virement possible |
 | 29/10/2026 | Compte « Compte courant » (Hello bank) = compte par défaut ; tous les comptes du chef de projet sont créés à l'étape 1 (#2) | suivre tous les comptes |
 | 29/10/2026 | On repart de zéro : chaque compte a un solde initial au 30/09/2026, les 58 transactions d'origine sont supprimées (conservées dans `backup_v1`) et le chef de projet ressaisit les opérations depuis le 01/10/2026 après #6 (#2) | données saisies d'emblée avec comptes et virements, et jeu de test réel |
 | 29/10/2026 | Les montants (soldes, solde initial) ne sont jamais écrits dans le repo ni dans les tickets | données personnelles |
@@ -231,11 +248,11 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 | 03/11/2026 | Protection de `main` : merge uniquement par PR, check `tests-sql` obligatoire (sans approbation requise, contournement admin possible en urgence) | une PR qui casse une migration ou une requête du front ne peut plus être mergée par erreur |
 | 03/11/2026 | Accès navigateur de Quentin permanent mais limité à TEST : previews et `localhost` seulement, contrôle du bandeau « Environnement de TEST » avant toute action, prod interdite même en lecture (contrôle de la prod en SQL lecture seule uniquement) ; ses données de test sont préfixées `TEST QA` (#18) | tester l'app réellement sans jamais toucher aux données réelles, et sans abîmer le jeu de données de #21 |
 | 03/11/2026 | Sprint 1 : #5 traité avant #4 ; si la charge déborde, on sort #9 en premier | #5 ne dépend de rien alors que #4 attend la liste des comptes au 30/09 |
-| 03/11/2026 | Solde initial de chaque compte = solde **au soir du 30/09/2026** ; seules les transactions datées **à partir du 01/10/2026** sont saisies | sinon double comptage dans `v_soldes_comptes` |
+| 03/11/2026 | Solde initial de chaque compte = solde **au soir du 30/09/2026** ; seules les transactions datées **à partir du 01/10/2026** sont saisies **Remplacée le 05/11/2026.** | sinon double comptage dans `v_soldes_comptes` |
 | 03/11/2026 | `nb_jours_depuis_releve` de `v_soldes_comptes` reste calculé en UTC | écart d'au plus un jour, sans enjeu |
 | 03/11/2026 | Comptes de prod (#4) : 3 comptes `courant`, dont le compte par défaut ; plafonds et couleurs non renseignés, ajoutés par le chef de projet après #8, qui doit proposer plafond et couleur pour tous les types ; ne pas modifier un compte depuis l'app avant #8 (consigne levée : #8 livré le 03/11) | la modale compte actuelle ne connaît ni le type `courant` ni le plafond |
 | 03/11/2026 | Nouvelle transaction : compte obligatoire ; une ancienne transaction sans compte reste modifiable avec « Aucun compte » (#6) | toutes les nouvelles opérations alimentent le solde calculé, sans bloquer l'historique |
-| 03/11/2026 | Les mouvements restent **visibles dans la liste** (badge « Mouvement », filtre « Mouvements ») et toujours **exclus des métriques et des statistiques** (#6) | voir les virements sans fausser le budget |
+| 03/11/2026 | Les mouvements restent **visibles dans la liste** (badge « Mouvement », filtre « Mouvements ») et toujours **exclus des métriques et des statistiques** (#6) **Remplacée le 05/11/2026.** | voir les virements sans fausser le budget |
 | 03/11/2026 | Échappement HTML des cartes comptes intégré à #8 (`esc()` + `data-*-id`, plus d'`onclick` concaténé) | l'écran était refait ; les boutons cassaient sur une apostrophe |
 | 03/11/2026 | Règles du voyant des cartes comptes, dans l'ordre : aucun relevé → « Aucun relevé » ; relevé ≥ 31 j → « ⏱ N jours » même avec écart ; relevé antérieur au solde initial → « Relevé à saisir » ; écart ≠ 0 → « ⚠ écart » ; écart 0 et 0–14 j → « ✓ rapproché » (vert) ; écart 0 et 15–30 j → « ✓ il y a N j » (bleu) ; relevé futur = 0 j (#8, proposition de Fabien validée) | un relevé trop ancien ne permet plus de conclure ; distinguer « concordant récent » et « concordant ancien » |
 | 03/11/2026 | Patrimoine total de l'onglet Comptes = somme des **soldes calculés** (#8) | refléter les opérations saisies, pas seulement les relevés |
@@ -247,6 +264,14 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 | 04/11/2026 | #55 (erreurs des soldes banque) intégré au sprint 1 en supplément, avec une confirmation en 2 temps sur la croix ✕ de l'historique des soldes | relevés au cœur du voyant des comptes ; même confirmation que pour les transactions et les catégories |
 | 04/11/2026 | Un seul relevé par compte et par date : enregistrer à une date déjà saisie remplace l'ancien relevé, sans message (upsert sur `compte_id,date`) | comportement existant, conservé |
 | 03/11/2026 | Les soldes des comptes suivent les opérations (entrée = crédit, sortie = débit, mouvement = débit de « Depuis » et crédit de « Vers ») pour voir l'écart avec le solde réel : calcul par `v_soldes_comptes` (#5), affichage par #8, pas de nouveau ticket | besoin déjà couvert |
+| 05/11/2026 | **Abandon du type `mouvement`** : un virement interne se saisit en une **sortie** sur le compte de départ et une **entrée** sur le compte d'arrivée. Une catégorie par utilisateur peut être cochée **« Mouvement de compte »** (`categories.mouvement_compte`, index unique partiel ; cochée sur « Virement interne » par la migration) : ses opérations sont visibles dans la liste, comptent dans les soldes et sont **exclues des métriques et des statistiques**. Pas de case générique « exclure des statistiques ». Remplace les décisions « mouvements exclus des stats », 29/10 (#2, option A) et 03/11 (#6) (#68, #69) | avec un seul mouvement « Depuis → Vers », on voyait mal de quel compte vers quel compte |
+| 05/11/2026 | Indicateur **« Mouvements de compte »** = entrées − sorties de la catégorie cochée, attendu à **0** ; badge vert « ✓ 0,00 € » ou rouge avec l'écart ; uniquement en tête de la liste des transactions (pas dans Statistiques), sur le mois affiché ou tout l'historique en « Tout voir » ; il ignore les filtres (#70) | repérer un virement saisi à moitié ou avec un mauvais montant |
+| 05/11/2026 | Soldes initiaux des comptes de prod **au 31/10/2026**, transactions saisies **à partir du 01/11/2026** (remplace la décision du 03/11 sur le 30/09) | choix du chef de projet |
+| 05/11/2026 | La barre Entrées / Sorties / Solde du mois (`#metrics`), commune à tous les onglets, ne suit **aucun** filtre ; les totaux de ce qui est affiché vont dans une ligne de sous-total de la carte « Historique » qui suit tous les filtres et « Tout voir » ; la catégorie « Mouvement de compte » y est exclue sauf si on filtre dessus (#72) | ne pas changer le sens d'indicateurs visibles partout |
+| 05/11/2026 | Les 4 modales ne se ferment plus au clic à l'extérieur, seulement par Annuler, ✕ ou Échap (#71) | ne plus perdre une saisie en cours |
+| 05/11/2026 | Un seul bouton « + Nouvelle opération » qui ouvre la modale sur **Sortie** ; sélecteur − Sortie / + Entrée visible dès la création ; modale rouge ou verte, montant précédé de − ou + ; toutes les catégories proposées quel que soit le type (#73, maquettes validées) | les sorties sont bien plus fréquentes, éviter le mauvais bouton |
+| 05/11/2026 | Lignes de la liste des transactions allégées : plus de badge « Entrée » / « Sortie » (le montant signé et coloré suffit), plus de mention « Hors Tricount » (#74) ; pastille ● à la couleur du compte à la place du 🏦 (#76, option A préférée au liseré) | liste plus lisible |
+| 05/11/2026 | Catégories : on reste sur les emojis (pas d'icônes au trait), catalogue élargi, recherche par mots-clés, saisie libre d'un seul emoji (#78) | pas de migration, gain sans refonte |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
