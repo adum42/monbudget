@@ -59,7 +59,7 @@ CHROMIUM_PATH=/usr/bin/google-chrome npx playwright test
 L'app est servie en local, donc branchée sur TEST (aiguillage de #20), mais **aucune requête ne sort** :
 
 - les CDN (`supabase-js`, `Chart.js`) sont servis depuis `tests/node_modules` ;
-- les appels à Supabase TEST sont interceptés et servis par une **fausse base en mémoire** (fixture `base` de `e2e/outils.js`), qui note aussi chaque écriture envoyée par l'app (`base.ecritures`) et peut renvoyer une erreur Postgres à la demande (`base.forcerErreur('23514')`) ;
+- les appels à Supabase TEST sont interceptés et servis par une **fausse base en mémoire** (fixture `base` de `e2e/outils.js`), qui note aussi chaque écriture envoyée par l'app (`base.ecritures`) et peut renvoyer une erreur Postgres à la demande (`base.forcerErreur('23514')` pour la prochaine écriture, `base.forcerErreurLecture('v_soldes_comptes','42501')` pour les lectures d'une table) ; la vue `v_soldes_comptes` y est recalculée à chaque lecture à partir de `comptes`, `soldes` et `transactions` (#66) ;
 - tout appel vers un autre site, ou vers un autre projet Supabase (la prod), est **bloqué et fait échouer le test** ;
 - l'horloge de la page est figée au **mercredi 4 novembre 2026, 10 h, heure de Paris**, avec `timezoneId: 'Europe/Paris'` : les dates et le mois affiché sont toujours les mêmes ;
 - à la fin de chaque test, **toute erreur dans la console** fait échouer le test, sauf celles déclarées attendues (`journal.attendre(/motif/)`).
