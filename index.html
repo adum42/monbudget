@@ -872,7 +872,14 @@ async function saveTx(){
   }catch(e){error=e;}
   saveTxEnCours=false;if(bouton)bouton.disabled=false;
   if(error){console.error('[monbudget] saveTx',error);afficherErreurTx(messageErreurSupabase(error));return;}
-  closeTxModal();await loadTransactions();renderAll();
+  closeTxModal();await rechargerApresTx();
+}
+// Après une écriture sur une transaction : transactions ET comptes (v_soldes_comptes), sinon les
+// soldes calculés, les voyants et le patrimoine total restent ceux du chargement initial (#66).
+// Une erreur de loadComptes est affichée par renderComptes, la liste des transactions est redessinée.
+async function rechargerApresTx(){
+  await Promise.all([loadTransactions(),loadComptes()]);
+  renderAll();
 }
 function askDeleteTx(){
   if(!editingTxId) return;
@@ -886,7 +893,7 @@ async function deleteTxFromModal(){
   if(!editingTxId) return;
   const{error}=await sb.from('transactions').delete().eq('id',editingTxId);
   if(error){console.error('[monbudget] deleteTx',error);resetDeleteConfirm();afficherErreurTx(messageErreurSupabase(error));return;}
-  closeTxModal();await loadTransactions();renderAll();
+  closeTxModal();await rechargerApresTx();
 }
 // Dupliquer : nouvelle transaction pré-remplie (mêmes comptes, catégorie, montant), date du jour
 function dupTx(){

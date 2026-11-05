@@ -10,6 +10,8 @@
 //              épinglées, pas d'Internet nécessaire) ; toute requête vers un autre site, ou vers un
 //              projet Supabase autre que TEST, est bloquée et fait échouer le test.
 //   base     : faux Supabase en mémoire (tables, écritures reçues, erreur forcée). Sans connexion.
+//              La vue v_soldes_comptes y est recalculée à chaque lecture (#66) ; une erreur de lecture
+//              se force par table avec base.forcerErreurLecture('v_soldes_comptes','42501').
 //   app      : la page de l'app ouverte, connectée à la fausse base, bandeau TEST contrôlé.
 //
 // L'horloge de la page est figée au mercredi 4 novembre 2026, 10 h, heure de Paris :
@@ -49,7 +51,7 @@ function donneesInitiales(){
       {id:'t3',user_id:UTILISATEUR.id,description:'TEST QA Loyer octobre',montant:650,type:'sortie',categorie_id:null,date:'2026-10-05',tricount:'non',epingle:false,note:null,compte_id:'k1',compte_dest_id:null},
     ],
     soldes:[],
-    v_soldes_comptes:[],   // vue de #5 : vide ici, l'onglet Comptes n'est pas testé dans ce socle
+    v_soldes_comptes:[],   // vue de #5 : jamais lue telle quelle, recalculée à chaque lecture (vueSoldesComptes, #66)
   };
 }
 
@@ -61,13 +63,49 @@ function sessionFactice(){
   return {access_token:jwt,refresh_token:'factice',token_type:'bearer',expires_in:3600,expires_at:maintenant+3600,user:UTILISATEUR};
 }
 
+// Vue v_soldes_comptes (#5), recalculée à partir des tables comme le fait Postgres (#66) :
+// solde calculé = solde initial + entrées − sorties − mouvements sortants + mouvements entrants,
+// transactions datées à partir de date_solde_initial ; dernier relevé, écart à la date du relevé
+// et jours depuis le relevé (« aujourd'hui » = date de l'horloge figée, à Paris).
+// Voir supabase/migrations/202611031145_vue_soldes_comptes.sql.
+const AUJOURDHUI=HEURE_FIGEE.toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'});   // 2026-11-04
+const joursEntre=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/86400000);
+function vueSoldesComptes(t){
+  return t.comptes.map(c=>{
+    const debut=c.date_solde_initial||'0000-01-01';
+    const releve=t.soldes.filter(s=>s.compte_id===c.id&&s.user_id===c.user_id)
+      .sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
+    const flux=[
+      ...t.transactions.filter(x=>x.compte_id===c.id)
+        .map(x=>({date:x.date,delta:x.type==='entrée'?Number(x.montant):-Number(x.montant)})),
+      ...t.transactions.filter(x=>x.compte_dest_id===c.id&&x.type==='mouvement')
+        .map(x=>({date:x.date,delta:Number(x.montant)})),
+    ].filter(x=>x.date>=debut);
+    const somme=l=>l.reduce((s,x)=>s+x.delta,0);
+    const initial=Number(c.solde_initial);
+    const aDate=releve&&releve.date>=debut?initial+somme(flux.filter(x=>x.date<=releve.date)):null;
+    return {
+      compte_id:c.id,user_id:c.user_id,nom:c.nom,type:c.type,
+      solde_initial:c.solde_initial,date_solde_initial:c.date_solde_initial,
+      solde_calcule:initial+somme(flux),
+      dernier_solde_banque:releve?releve.montant:null,
+      date_dernier_solde_banque:releve?releve.date:null,
+      solde_calcule_a_date_banque:aDate,
+      ecart:aDate===null?null:Number(releve.montant)-aDate,
+      nb_jours_depuis_releve:releve?joursEntre(releve.date,AUJOURDHUI):null,
+    };
+  });
+}
+
 // ── Fausse base : un sous-ensemble de l'API REST de Supabase (PostgREST) ─────
 // Gère ce que l'app utilise : lecture d'une table, insertion, modification et suppression
 // filtrées par « colonne=eq.valeur ». Chaque écriture reçue est notée dans base.ecritures.
 function creerFausseBase(){
-  const b={tables:donneesInitiales(),ecritures:[],erreurForcee:null,compteur:0};
+  const b={tables:donneesInitiales(),ecritures:[],erreurForcee:null,erreursLecture:{},compteur:0};
   // La prochaine écriture renverra cette erreur Postgres (ex. '23514'), comme le ferait Supabase.
   b.forcerErreur=code=>{b.erreurForcee=code;};
+  // Les prochaines lectures de cette table renverront cette erreur, jusqu'à b.forcerErreurLecture(table,null) (#66).
+  b.forcerErreurLecture=(table,code)=>{b.erreursLecture[table]=code;};
 
   const filtres=url=>[...url.searchParams].filter(([k])=>!['select','order','limit','offset','on_conflict','columns'].includes(k))
     .map(([col,v])=>[col,v.replace(/^eq\./,'')]);
@@ -86,7 +124,10 @@ function creerFausseBase(){
     const f=filtres(url);
 
     if(methode==='GET'||methode==='HEAD'){
-      let lignes=b.tables[table].filter(l=>correspond(l,f));
+      const codeLecture=b.erreursLecture[table];
+      if(codeLecture) return route.fulfill({status:400,json:{code:codeLecture,message:'erreur simulée '+codeLecture,details:null,hint:null},headers:CORS});
+      const source=table==='v_soldes_comptes'?vueSoldesComptes(b.tables):b.tables[table];
+      let lignes=source.filter(l=>correspond(l,f));
       // Comptage seul (select(..., {count:'exact', head:true})) : le total est dans l'en-tête.
       if(methode==='HEAD') return route.fulfill({status:200,body:'',headers:{...CORS,'content-range':`*/${lignes.length}`}});
       const select=url.searchParams.get('select')||'*';
