@@ -1,6 +1,6 @@
 # monbudget — dossier projet
 
-> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 04/11/2026.
+> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 16/11/2026.
 > Elle décrit l'app **telle qu'elle est réellement** (code et base vérifiés), pas telle qu'on l'imagine.
 
 ## 1. Vision
@@ -19,7 +19,7 @@ Hors périmètre (décision du 29/10/2026) : **import bancaire CSV/OFX**.
 
 | Étape | Fonctionnalité | Maquette | État |
 |---|---|---|---|
-| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6), cartes comptes (#8) et soldes recalculés après chaque saisie (#66) livrés ; virements internes en deux opérations (#68 → #69 → #70), retouches de la liste et de la saisie (#71 à #78) et validation de l'étape (#10) à venir |
+| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6), cartes comptes (#8), soldes recalculés après chaque saisie (#66) et catégorie « Mouvement de compte » en base (#68, en prod le 16/11) livrés ; virements internes en deux opérations côté écran (#69 → #70), suppression de `compte_dest_id` (#86, après #69), retouches de la liste et de la saisie (#71 à #78) et validation de l'étape (#10) à venir |
 | 2 | Pointage et rapprochement bancaire | `docs/maquettes/2-pointage.html` | à faire |
 | 3 | Cagnottes par thème | `docs/maquettes/4-cagnottes.html` | à faire |
 | 4 | Suivi de l'épargne mensuelle | `docs/maquettes/3-epargne.html` | à faire |
@@ -55,9 +55,10 @@ Le chef de projet a commencé sa saisie sur la prod **au 01/11/2026**, avec les 
 
 | Ordre | Ticket | Agent | Dépend de |
 |---|---|---|---|
-| 1 | #68 Catégorie « Mouvement de compte » et retrait du type `mouvement` | Sylvie | — (migration : local → TEST → PROD) |
+| 1 | #68 Catégorie « Mouvement de compte » et retrait du type `mouvement` | Sylvie | **livré le 16/11** (PR #84, migration `202611161145` sur TEST et PROD) |
 | 2 | #69 Retirer les mouvements et exclure des stats la catégorie « Mouvement de compte » | Fabien | #68 en prod |
 | 3 | #70 Indicateur « Mouvements de compte » en tête de la liste des transactions | Fabien | #69 |
+| après #69 | #86 Supprimer `compte_dest_id` (colonne, FK, index, trigger, contrainte) — hors sprint 2 pour l'instant | Sylvie | #69 en prod |
 | en parallèle de #68 | #71 Les fenêtres ne se ferment plus au clic extérieur · #77 croix ✕ de la recherche · #72 filtre par compte et sous-total · #58 modale ouverte avant la fin du chargement · #82 carte compte : opérations depuis le relevé et solde attendu | Fabien | — |
 | après #69 | #80 mise à jour de `CLAUDE.md` (règle des mouvements), Corentin · #73 bouton unique « Nouvelle opération » et modale colorée · #74 alléger les lignes de la liste · #76 pastille couleur du compte (après #74) | Fabien | #69 |
 | ensuite | #78 emojis des catégories · #54 libellé du graphique des comptes · #56 « € » à 390 px · #24 contrôle d'appartenance | Fabien / Sylvie | — |
@@ -174,17 +175,17 @@ Toutes les tables : clé `id uuid`, `user_id uuid → auth.users`, RLS activée 
 
 | Table | Colonnes métier | Remarques |
 |---|---|---|
-| `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie, mouvement}, `categorie_id`, `date`, `compte_id` (nullable ; compte source d'un mouvement), `compte_dest_id` (nullable ; compte destination d'un mouvement), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Contrainte `transactions_mouvement_comptes_check` : un `mouvement` a `compte_id` et `compte_dest_id` renseignés et différents ; une entrée ou une sortie n'a pas de `compte_dest_id`. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées. Trigger `transactions_verifier_comptes` (avant insertion ou modification, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503`. Colonne `direction` **supprimée** (#3). Utilisés par l'interface depuis #6. En prod, les 58 transactions d'origine ont été purgées le 03/11 (#4, copie dans `backup_v1.transactions`). |
-| `categories` | `nom`, `type` ∈ {entrée, sortie, les deux}, `couleur`, `emoji` | |
+| `transactions` | `description`, `montant numeric(12,2)` (strictement positif, `check montant > 0` ; le sens vient de `type`), `type` ∈ {entrée, sortie} (`transactions_type_check`, `mouvement` retiré par #68), `categorie_id`, `date`, `compte_id` (nullable), `compte_dest_id` (**obsolète**, toujours null, suppression par #86), `tricount` ∈ {non, oui, oui validé}, `epingle bool`, `note` | Depuis #68 : un virement interne = une sortie sur le compte de départ + une entrée sur le compte d'arrivée, dans la catégorie cochée « Mouvement de compte » ; contrainte `transactions_compte_dest_id_vide_check` (`compte_dest_id is null`), `transactions_mouvement_comptes_check` supprimée. FK `compte_id` et `compte_dest_id` en `on delete restrict`, indexées (`transactions_compte_dest_id_idx` supprimé avec la colonne par #86). Trigger `transactions_verifier_comptes` (avant insertion ou modification de `compte_id`, `compte_dest_id`, `user_id`, `security invoker`, `search_path` vide) : les comptes référencés doivent appartenir au `user_id` de la transaction, sinon erreur `23503` (la mention de `compte_dest_id` disparaît avec #86). Colonne `direction` **supprimée** (#3). Utilisés par l'interface depuis #6. En prod, les 58 transactions d'origine ont été purgées le 03/11 (#4, copie dans `backup_v1.transactions`). |
+| `categories` | `nom`, `type` ∈ {entrée, sortie, les deux}, `couleur`, `emoji`, `mouvement_compte bool` (défaut faux, #68) | Index unique partiel `categories_un_mouvement_compte_par_user` : au plus une catégorie « Mouvement de compte » par utilisateur ; changer de catégorie cochée se fait en deux requêtes (décocher l'ancienne puis cocher la nouvelle, sinon `23505`). La migration #68 a coché « Virement interne » (nom comparé sans casse ni espaces) et l'a passée en `les deux`. En prod : « Virement interne » cochée, seule cochée. Lue par `loadCategories` (`select *`) ; exclusion des statistiques par le front (#69). |
 | `comptes` | `nom`, `type` ∈ {courant, livret, investissement, especes} (défaut `courant`), `banque`, `couleur`, `solde_initial numeric(12,2)` (défaut 0, **peut être négatif**), `date_solde_initial date`, `par_defaut bool` (défaut faux), `plafond numeric(12,2)` (nullable, `> 0` si renseigné) | Index unique partiel `comptes_un_par_defaut_par_user` : un seul compte par défaut par utilisateur, quel que soit son type. Toutes les colonnes sont éditables depuis la modale compte depuis #8. En prod (#4, 03/11) : **7 comptes** avec leur solde initial au soir du 30/09/2026, ramené par le chef de projet au **31/10/2026** (05/11) (3 `courant` dont le compte par défaut, 3 `livret`, 1 `investissement`), `plafond` vide et couleur par défaut, à renseigner par le chef de projet depuis l'app ; les 3 anciens comptes et leurs 5 soldes banque ont été supprimés. |
 | `soldes` | `compte_id`, `date`, `montant`, `note` | Unicité `(compte_id, date)`. FK `compte_id` en `cascade`. Soldes banque saisis à la main (relevés). |
 
-Vue `v_soldes_comptes` (#5, migration `202611031145_vue_soldes_comptes.sql`, en prod le 03/11) : une ligne par compte de l'utilisateur, `security_invoker = on` (soumise à la RLS de l'utilisateur qui l'interroge).
+Vue `v_soldes_comptes` (#5, migration `202611031145_vue_soldes_comptes.sql`, en prod le 03/11 ; recréée par #68, migration `202611161145_mouvement_de_compte.sql`, en prod le 16/11, mêmes colonnes) : une ligne par compte de l'utilisateur, `security_invoker = on` (soumise à la RLS de l'utilisateur qui l'interroge).
 
 | Colonne | Contenu |
 |---|---|
 | `compte_id`, `user_id`, `nom`, `type`, `solde_initial`, `date_solde_initial` | repris du compte |
-| `solde_calcule` | solde initial + entrées − sorties − mouvements sortants + mouvements entrants, pour les transactions datées à partir de `date_solde_initial` (incluse) |
+| `solde_calcule` | solde initial + entrées − sorties du compte (`compte_id`), pour les transactions datées à partir de `date_solde_initial` (incluse) ; un virement interne compte donc en sortie sur le compte de départ et en entrée sur le compte d'arrivée. Plus aucune branche `mouvement` ni lecture de `compte_dest_id` depuis #68 |
 | `dernier_solde_banque`, `date_dernier_solde_banque` | dernière ligne de `soldes` du compte |
 | `solde_calcule_a_date_banque` | solde calculé arrêté à la date du dernier solde banque (incluse) ; `null` si ce relevé est antérieur à `date_solde_initial` |
 | `ecart` | `dernier_solde_banque − solde_calcule_a_date_banque` (même règle du `null`) |
@@ -276,6 +277,7 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 | 05/11/2026 | Catégories : on reste sur les emojis (pas d'icônes au trait), catalogue élargi, recherche par mots-clés, saisie libre d'un seul emoji (#78) | pas de migration, gain sans refonte |
 | 05/11/2026 | Sprint 1 clos en avance (tous ses tickets livrés) ; **sprint 2 du 06/11 au 19/11 inclus**, objectif terminer et valider l'étape 1 : 16 tickets (#10, #24, #54, #56, #58, #68 à #74, #76 à #78, #80) ; #71 et #56 rattachés au jalon Étape 1 | rythme de deux semaines conservé ; la vitesse du sprint 1 (20 tickets) et la majorité de tickets S le permettent, le goulot étant les migrations et recettes du chef de projet |
 | 16/11/2026 | Sprint 2 démarré le 16/11 (au lieu du 06/11) et prolongé jusqu'au **20/11/2026 inclus** ; #82 (carte compte : opérations depuis le relevé, option A) intégré au sprint, 17 tickets ; ordre de sortie en cas de débordement : #82, #78, #56, #54 | décision du chef de projet : le sprint commence seulement aujourd'hui ; #82, taille S sans dépendance, lève une confusion dans la saisie de prod |
+| 16/11/2026 | Migration #68 : `transactions.compte_dest_id` **conservée** et forcée à null (`transactions_compte_dest_id_vide_check`) au lieu d'être supprimée ; sa suppression (colonne, FK, index `transactions_compte_dest_id_idx`, mention dans le trigger `transactions_verifier_comptes`, contrainte) passe dans un ticket de suivi, #86, à faire une fois #69 en prod | le front actuel envoie `compte_dest_id: null` à chaque enregistrement (`saveTx`) : supprimer la colonne aurait cassé toute saisie en prod entre l'application de #68 et le merge de #69 |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
