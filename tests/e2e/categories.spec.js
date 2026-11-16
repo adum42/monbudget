@@ -59,7 +59,7 @@ test('Annuler ne supprime rien, puis la croix de B ne propose que B',async({app,
   await expect(ligneCat(app,'TEST QA Loisirs')).toBeVisible();
 });
 
-for(const fermeture of ['Échap','clic à l\'extérieur']){
+for(const fermeture of ['Échap','croix ✕']){   // plus de fermeture au clic à l'extérieur depuis #71
   test(`ouvrir A, fermer par ${fermeture}, puis la croix de B ne propose que B`,async({app,base})=>{
     await ongletCategories(app);
     await crayon(app,'TEST QA Courses').click();
@@ -69,7 +69,7 @@ for(const fermeture of ['Échap','clic à l\'extérieur']){
       await app.locator('#cat-modal-title').click();   // Échap est ignoré quand le focus est dans un champ (règle existante)
       await app.keyboard.press('Escape');
     }else{
-      await modale(app).click({position:{x:5,y:5}});
+      await modale(app).locator('.modal-close').click();
     }
     await expect(modale(app)).not.toHaveClass(/open/);
     expect(await app.evaluate(()=>editingCatId)).toBeNull();
