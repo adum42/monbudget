@@ -75,7 +75,7 @@ Le projet test a été créé vide le 29/10/2026 (#19), aligné sur la prod d'al
 | 4 | `add_note_to_transactions` | `supabase/bootstrap/04_add_note_to_transactions.sql` | SQL prod identique |
 | 5 | `etape1_comptes_tous_types_virements` | `supabase/migrations/202610291400_etape1_comptes_tous_types_virements.sql` | #3 : appliquée sur test le 02/11/2026 (version `20261102102800`), puis sur prod (version `20261102103500`) |
 | 6 | `vue_soldes_comptes` | `supabase/migrations/202611031145_vue_soldes_comptes.sql` | #5 : appliquée sur test puis sur prod le 03/11/2026, inscrite avec la version `202611031145` sur les deux bases |
-| 7 | `mouvement_de_compte` | `supabase/migrations/202611161145_mouvement_de_compte.sql` | #68 : à appliquer (sur test, supprimer d'abord les mouvements fictifs, voir le ticket) |
+| 7 | `mouvement_de_compte` | `supabase/migrations/202611161145_mouvement_de_compte.sql` | #68 : appliquée sur test puis sur prod le 16/11/2026, version `202611161145` sur les deux bases |
 
 Le schéma `backup_v1` n'est volontairement pas reproduit sur test.
 
