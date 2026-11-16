@@ -165,10 +165,16 @@ select qa.cas('Transactions sans compte (socle) : aucun effet sur les soldes', '
      if v is distinct from 0 then raise exception 'Livret DD = %', v; end if; end $x$ $q$);
 
 -- ───────── Sécurité et lecture seule ─────────
-select qa.cas('service_role : solde posé par A sur le compte de B (ÉCART #24) ignoré', 'service_role', null,
+-- Depuis #24, un solde de A sur le compte de B est refusé par le trigger soldes_verifier_compte :
+-- on le pose trigger désactivé (cas impossible via l'API) pour vérifier que la vue l'ignore toujours.
+select qa.cas('service_role : solde posé par A sur le compte de B (trigger #24 désactivé) ignoré par la vue', 'postgres', null,
   $q$do $x$ declare r record; begin
+     alter table public.soldes disable trigger soldes_verifier_compte;
      insert into public.soldes (user_id,compte_id,date,montant) values
        ('aaaaaaaa-0000-0000-0000-000000000001','40000000-0000-0000-0000-00000000000b','2026-12-31',123456);
+     alter table public.soldes enable trigger soldes_verifier_compte;
+     perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
+     perform set_config('role', 'service_role', true);
      select * into r from public.v_soldes_comptes where compte_id='40000000-0000-0000-0000-00000000000b';
      if r.dernier_solde_banque is distinct from 10 then raise exception 'banque de B = %', r.dernier_solde_banque; end if; end $x$ $q$);
 select qa.cas('Écriture dans la vue refusée', 'authenticated', :A,

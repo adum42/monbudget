@@ -96,4 +96,3 @@ Deux autres situations possibles :
 
 - Le schéma `auth` est réduit à l'essentiel : un cas qui dépendrait d'autres colonnes de `auth.users` ou d'autres fonctions Supabase doit d'abord les ajouter dans `socle/00_supabase.sql`.
 - Ces tests vérifient la base, pas l'écran : les parcours dans le navigateur sont couverts par les tests Playwright (#9).
-- Les cas `ÉCART #24` de `cas/ticket03_comptes_virements.sql` décrivent un trou de sécurité **connu et accepté pour l'instant** (solde ou catégorie rattachés à un objet d'un autre utilisateur) : quand #24 sera livré, leur attendu passera de `'ok'` à `'23503'`.
