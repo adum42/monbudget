@@ -135,8 +135,12 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .tx-note{font-size:11px;color:var(--muted);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tx-search-wrap{position:relative;margin-bottom:12px;}
 .tx-search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);}
-.tx-search-input{width:100%;padding:8px 12px 8px 34px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;}
+.tx-search-input{width:100%;padding:8px 40px 8px 34px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;}
 .tx-search-input:focus{border-color:var(--accent);}
+/* Croix ✕ d'effacement de la recherche (#77) : zone de clic 32 × 32 px, à droite dans le champ */
+.tx-search-clear{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:32px;height:32px;display:flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--muted);font-size:14px;line-height:1;cursor:pointer;}
+.tx-search-clear:hover,.tx-search-clear:focus-visible{color:var(--text);}
+.tx-search-clear[hidden]{display:none;}
 .btn-view-all{padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:12px;white-space:nowrap;}
 .btn-view-all.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
 .confirm-delete-row{display:flex;align-items:center;gap:8px;margin-right:auto;}
@@ -519,6 +523,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <div class="tx-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input class="tx-search-input" id="tx-search" placeholder="Rechercher une transaction..." oninput="renderTransactions()">
+          <button type="button" class="tx-search-clear" id="tx-search-clear" aria-label="Effacer la recherche" title="Effacer la recherche" hidden>✕</button>
         </div>
         <div class="tx-filters">
           <select id="f-sort" onchange="renderTransactions()"><option value="date">Trier : date</option><option value="montant-desc">Montant ↓</option><option value="montant-asc">Montant ↑</option></select>
@@ -1695,8 +1700,21 @@ function renderIndicateurMouvements(){
   el.innerHTML=`<span class="badge ${badge.classe}" title="${esc(titre)}">${esc(badge.texte)}</span>`;
   el.hidden=false;
 }
+// Croix ✕ de la recherche (#77) : visible uniquement quand le champ contient du texte
+function majCroixRecherche(){
+  const champ=document.getElementById('tx-search');
+  document.getElementById('tx-search-clear').hidden=!champ.value;
+}
+// Vide la recherche sans toucher aux autres filtres ni à « Tout voir », puis rend le focus au champ
+function effacerRecherche(){
+  const champ=document.getElementById('tx-search');
+  champ.value='';
+  renderTransactions();
+  champ.focus();
+}
 function renderTransactions(){
   renderIndicateurMouvements();
+  majCroixRecherche();
   const typeF=document.getElementById('f-type').value;
   const catF=document.getElementById('f-cat').value;
   const tcF=document.getElementById('f-tricount').value;
@@ -2065,6 +2083,7 @@ document.addEventListener('keydown',function(e){
 document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('btn-prev-month').addEventListener('click',function(){changeMonth(-1);});
   document.getElementById('btn-next-month').addEventListener('click',function(){changeMonth(1);});
+  document.getElementById('tx-search-clear').addEventListener('click',function(e){e.stopPropagation();effacerRecherche();});
 });
 </script>
 </body>
