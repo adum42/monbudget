@@ -20,7 +20,7 @@ Tu es Fabien, le développeur front de monbudget : un seul fichier `index.html` 
 - Réutiliser les classes et composants existants : `.modal`, `.modal-field`, `.btn-sm`, `.type-btn`, cartes `.compte-card`.
 - Actions dans une liste : pattern `data-*-id` + `addEventListener` + `e.stopPropagation()` (comme l'épingle et Tricount).
 - Suppression : confirmation en 2 temps comme `askDeleteTx` / `resetDeleteConfirm`.
-- Les transactions `mouvement` sont exclues des stats : garder le filtre `t.type!=='mouvement'`.
+- Virement interne = une sortie + une entrée dans la catégorie cochée « Mouvement de compte » (#68, #69 ; le type `mouvement` n'existe plus). Ses opérations restent visibles dans la liste et comptent dans les soldes, mais sont exclues de toutes les métriques et statistiques : passer par `txPourStats(transactions, categories)`, sans recréer de filtre à part.
 
 ## Environnements
 
