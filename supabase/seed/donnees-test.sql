@@ -8,10 +8,14 @@
 -- Ce qu'il fait, pour UN utilisateur (celui de v_user_id ci-dessous) :
 --   1. efface toutes les données de cet utilisateur (transactions, soldes,
 --      comptes, catégories) ;
---   2. recrée 8 catégories, 4 comptes (un de chaque type, dont le compte
---      courant par défaut), des soldes mensuels et une trentaine de
+--   2. recrée 9 catégories (dont « TEST Virement interne », cochée
+--      « Mouvement de compte »), 4 comptes (un de chaque type, dont le compte
+--      courant par défaut), des soldes mensuels et une quarantaine de
 --      transactions sur 3 mois (le mois en cours et les 2 précédents),
---      dont des virements internes (type `mouvement`).
+--      dont des virements internes : depuis #68, chaque virement est saisi
+--      en une sortie sur le compte de départ + une entrée sur le compte
+--      d'arrivée, dans la catégorie « Mouvement de compte ».
+-- Nécessite la migration 202611161145_mouvement_de_compte (#68).
 -- Les autres utilisateurs ne sont jamais touchés.
 --
 -- Rejouable : relancer le script donne le même jeu de données, sans doublon.
@@ -39,11 +43,11 @@ declare
 
   -- Catégories
   c_salaire uuid; c_alim uuid; c_logement uuid; c_transport uuid;
-  c_loisirs uuid; c_sante uuid; c_resto uuid; c_cadeaux uuid;
+  c_loisirs uuid; c_sante uuid; c_resto uuid; c_cadeaux uuid; c_virement uuid;
   -- Comptes
   k_courant uuid; k_livret uuid; k_invest uuid; k_especes uuid;
 
-  n_tx int; n_mvt int; n_mois int;
+  n_tx int; n_vir int; n_mois int;
 begin
   -- ── Garde-fou 1 : jamais sur la prod ──────────────────────────────────────
   -- La prod contient le schéma de sauvegarde `backup_v1` (docs/RESTAURATION.md),
@@ -86,6 +90,8 @@ begin
     (v_user_id, 'TEST Restaurants', 'sortie',   '#EC4899', '🍽️') returning id into c_resto;
   insert into public.categories (user_id, nom, type, couleur, emoji) values
     (v_user_id, 'TEST Cadeaux',     'les deux', '#378ADD', '🎁') returning id into c_cadeaux;
+  insert into public.categories (user_id, nom, type, couleur, emoji, mouvement_compte) values
+    (v_user_id, 'TEST Virement interne', 'les deux', '#94A3B8', '⇄', true) returning id into c_virement;
 
   -- ── 3. Comptes : un de chaque type ────────────────────────────────────────
   -- Le compte courant est le compte par défaut ; son solde initial est posé
@@ -115,41 +121,45 @@ begin
   -- ── 5. Transactions : le même schéma de mois, trois fois ─────────────────
   -- Pour chaque mois (m2, m1, m0) : salaire, loyer, courses, transport,
   -- loisirs, restaurant, un virement vers le livret, un retrait d'espèces
-  -- (mouvement courant → espèces) et une dépense payée en espèces.
+  -- (virement courant → espèces) et une dépense payée en espèces.
+  -- Un virement = deux lignes : sortie du compte de départ, entrée sur le compte d'arrivée.
   -- Les jours restent ≤ 28 pour exister dans tous les mois.
   insert into public.transactions
-    (user_id, description, montant, type, categorie_id, date, compte_id, compte_dest_id, tricount, epingle, note)
-  select v_user_id, t.description, t.montant, t.type, t.categorie_id, mois.d + t.jour, t.compte_id, t.compte_dest_id,
+    (user_id, description, montant, type, categorie_id, date, compte_id, tricount, epingle, note)
+  select v_user_id, t.description, t.montant, t.type, t.categorie_id, mois.d + t.jour, t.compte_id,
          t.tricount, t.epingle, t.note
   from (values (m2, 0), (m1, 1), (m0, 2)) as mois(d, k)
   cross join lateral (values
-    -- description                       montant                 type         catégorie     jour compte     destination tricount     épinglée note
-    ('TEST Salaire',                      2100.00,               'entrée',    c_salaire,    0,   k_courant, null::uuid, 'non',       true,  null::text),
-    ('TEST Loyer',                        650.00,                'sortie',    c_logement,   1,   k_courant, null,       'non',       true,  null),
-    ('TEST Courses supermarché',          84.30 + mois.k * 6.15, 'sortie',    c_alim,       4,   k_courant, null,       'non',       false, null),
-    ('TEST Courses marché',               32.60,                 'sortie',    c_alim,       17,  k_courant, null,       'non',       false, 'TEST note : panier de légumes'),
-    ('TEST Abonnement transports',        42.00,                 'sortie',    c_transport,  2,   k_courant, null,       'non',       false, null),
-    ('TEST Cinéma',                       11.50 * (mois.k + 1),  'sortie',    c_loisirs,    12,  k_courant, null,       'oui',       false, null),
-    ('TEST Restaurant entre amis',        48.90,                 'sortie',    c_resto,      20,  k_courant, null,       case mois.k when 0 then 'oui validé' else 'oui' end, false, null),
-    ('TEST Virement épargne',             200.00,                'mouvement', null,         3,   k_courant, k_livret,   'non',       false, null),
-    ('TEST Retrait espèces',              60.00,                 'mouvement', null,         9,   k_courant, k_especes,  'non',       false, null),
-    ('TEST Boulangerie',                  7.80,                  'sortie',    c_alim,       10,  k_especes, null,       'non',       false, null)
-  ) as t(description, montant, type, categorie_id, jour, compte_id, compte_dest_id, tricount, epingle, note);
+    -- description                       montant                 type         catégorie     jour compte     tricount     épinglée note
+    ('TEST Salaire',                      2100.00,               'entrée',    c_salaire,    0,   k_courant, 'non',       true,  null::text),
+    ('TEST Loyer',                        650.00,                'sortie',    c_logement,   1,   k_courant, 'non',       true,  null),
+    ('TEST Courses supermarché',          84.30 + mois.k * 6.15, 'sortie',    c_alim,       4,   k_courant, 'non',       false, null),
+    ('TEST Courses marché',               32.60,                 'sortie',    c_alim,       17,  k_courant, 'non',       false, 'TEST note : panier de légumes'),
+    ('TEST Abonnement transports',        42.00,                 'sortie',    c_transport,  2,   k_courant, 'non',       false, null),
+    ('TEST Cinéma',                       11.50 * (mois.k + 1),  'sortie',    c_loisirs,    12,  k_courant, 'oui',       false, null),
+    ('TEST Restaurant entre amis',        48.90,                 'sortie',    c_resto,      20,  k_courant, case mois.k when 0 then 'oui validé' else 'oui' end, false, null),
+    ('TEST Virement épargne',             200.00,                'sortie',    c_virement,   3,   k_courant, 'non',       false, null),
+    ('TEST Virement épargne',             200.00,                'entrée',    c_virement,   3,   k_livret,  'non',       false, null),
+    ('TEST Retrait espèces',              60.00,                 'sortie',    c_virement,   9,   k_courant, 'non',       false, null),
+    ('TEST Retrait espèces',              60.00,                 'entrée',    c_virement,   9,   k_especes, 'non',       false, null),
+    ('TEST Boulangerie',                  7.80,                  'sortie',    c_alim,       10,  k_especes, 'non',       false, null)
+  ) as t(description, montant, type, categorie_id, jour, compte_id, tricount, epingle, note);
 
   -- Quelques opérations ponctuelles, pour varier les listes et les statistiques
   insert into public.transactions
-    (user_id, description, montant, type, categorie_id, date, compte_id, compte_dest_id, tricount, epingle, note) values
-    (v_user_id, 'TEST Pharmacie',                   23.40, 'sortie',    c_sante,   m2 + 14, k_courant, null,     'non', false, null),
-    (v_user_id, 'TEST Cadeau d''anniversaire',      45.00, 'sortie',    c_cadeaux, m1 + 15, k_courant, null,     'non', false, 'TEST note longue pour vérifier le retour à la ligne dans la liste des transactions'),
-    (v_user_id, 'TEST Remboursement cadeau',        15.00, 'entrée',    c_cadeaux, m1 + 22, k_courant, null,     'non', false, null),
-    (v_user_id, 'TEST Achat ETF',                  150.00, 'mouvement', null,      m1 + 5,  k_courant, k_invest, 'non', false, null),
-    (v_user_id, 'TEST Opération sans catégorie',    19.99, 'sortie',    null,      m0 + 6,  k_courant, null,     'non', false, null);
+    (user_id, description, montant, type, categorie_id, date, compte_id, tricount, epingle, note) values
+    (v_user_id, 'TEST Pharmacie',                   23.40, 'sortie', c_sante,    m2 + 14, k_courant, 'non', false, null),
+    (v_user_id, 'TEST Cadeau d''anniversaire',      45.00, 'sortie', c_cadeaux,  m1 + 15, k_courant, 'non', false, 'TEST note longue pour vérifier le retour à la ligne dans la liste des transactions'),
+    (v_user_id, 'TEST Remboursement cadeau',        15.00, 'entrée', c_cadeaux,  m1 + 22, k_courant, 'non', false, null),
+    (v_user_id, 'TEST Achat ETF',                  150.00, 'sortie', c_virement, m1 + 5,  k_courant, 'non', false, null),
+    (v_user_id, 'TEST Achat ETF',                  150.00, 'entrée', c_virement, m1 + 5,  k_invest,  'non', false, null),
+    (v_user_id, 'TEST Opération sans catégorie',    19.99, 'sortie', null,       m0 + 6,  k_courant, 'non', false, null);
 
   -- ── 6. Bilan ──────────────────────────────────────────────────────────────
-  select count(*), count(*) filter (where type = 'mouvement'), count(distinct date_trunc('month', date))
-    into n_tx, n_mvt, n_mois
+  select count(*), count(*) filter (where categorie_id = c_virement), count(distinct date_trunc('month', date))
+    into n_tx, n_vir, n_mois
     from public.transactions where user_id = v_user_id;
-  raise notice 'Jeu de données TEST recréé : 8 catégories, 4 comptes, 6 soldes, % transactions dont % mouvements, sur % mois.',
-    n_tx, n_mvt, n_mois;
+  raise notice 'Jeu de données TEST recréé : 9 catégories, 4 comptes, 6 soldes, % transactions dont % opérations de virement interne (% virements), sur % mois.',
+    n_tx, n_vir, n_vir / 2, n_mois;
 end
 $seed$;

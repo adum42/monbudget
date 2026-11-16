@@ -19,17 +19,20 @@ select qa.cas('Type especes accepté', 'authenticated', :A,
   $q$insert into public.comptes (user_id,nom,type) values ('aaaaaaaa-0000-0000-0000-000000000001','Portefeuille','especes')$q$);
 select qa.cas('Type inconnu refusé', 'authenticated', :A,
   $q$insert into public.comptes (user_id,nom,type) values ('aaaaaaaa-0000-0000-0000-000000000001','X','pea')$q$, '23514');
-select qa.cas('CA3 mouvement compte_id = compte_dest_id refusé', 'authenticated', :A,
+select qa.cas('CA3 mouvement compte_id = compte_dest_id refusé (type mouvement interdit depuis #68)', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
     values ('aaaaaaaa-0000-0000-0000-000000000001','virement',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a','10000000-0000-0000-0000-00000000000a')$q$, '23514');
 select qa.cas('CA4 colonne direction absente', 'postgres', null,
   $q$do $x$ begin if exists (select 1 from information_schema.columns where table_schema='public' and table_name='transactions' and column_name='direction')
     then raise exception 'direction existe'; end if; end $x$ $q$);
 
--- ───────── Mouvements ─────────
-select qa.cas('Mouvement Livret A -> Livret DD accepté', 'authenticated', :A,
+-- ───────── Mouvements (type abandonné en #68 : tout mouvement est refusé) ─────────
+select qa.cas('Mouvement Livret A -> Livret DD refusé depuis #68', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','mvt-ok',100,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$);
+    values ('aaaaaaaa-0000-0000-0000-000000000001','x',100,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$, '23514');
+select qa.cas('Préparation : sortie « mvt-ok » sur Livret A', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
+    values ('aaaaaaaa-0000-0000-0000-000000000001','mvt-ok',100,'sortie','2026-10-01','10000000-0000-0000-0000-00000000000a')$q$);
 select qa.cas('Mouvement sans compte_dest_id refusé', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a')$q$, '23514');
@@ -39,9 +42,9 @@ select qa.cas('Mouvement sans compte_id refusé', 'authenticated', :A,
 select qa.cas('Sortie avec compte_dest_id refusée', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'sortie','2026-10-01','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('Mouvement modifié en entrée, compte_dest_id restant : refusé', 'authenticated', :A,
-  $q$update public.transactions set type='entrée' where description='mvt-ok'$q$, '23514');
-select qa.cas('Mouvement modifié en entrée avec compte_dest_id=null : accepté', 'authenticated', :A,
+select qa.cas('Sortie modifiée en mouvement : refusé', 'authenticated', :A,
+  $q$update public.transactions set type='mouvement', compte_dest_id='20000000-0000-0000-0000-00000000000a' where description='mvt-ok'$q$, '23514');
+select qa.cas('Sortie modifiée en entrée avec compte_dest_id=null (envoyé par le front actuel) : accepté', 'authenticated', :A,
   $q$update public.transactions set type='entrée', compte_dest_id=null where description='mvt-ok'$q$);
 
 -- ───────── Appartenance des comptes (trigger transactions_verifier_comptes) ─────────
@@ -125,10 +128,11 @@ select qa.cas('Changer le défaut en 1 update (bascule) : refusé, index non dé
 -- ───────── Suppression de compte (refusée s'il porte des opérations) ─────────
 select qa.cas('Supprimer un compte portant une tx (compte_id) : refusé', 'authenticated', :A,
   $q$delete from public.comptes where id='10000000-0000-0000-0000-00000000000a'$q$, '23503');
-select qa.cas('Préparation : virement Livret A -> Bitcoin', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-     values ('aaaaaaaa-0000-0000-0000-000000000001','mvt-btc',5,'mouvement','2026-10-02','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-00000000000a')$q$);
-select qa.cas('  … suppression de Bitcoin (destination du virement) refusée', 'authenticated', :A,
+select qa.cas('Préparation : virement Livret A -> Bitcoin (sortie + entrée, #68)', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id) values
+     ('aaaaaaaa-0000-0000-0000-000000000001','mvt-btc',5,'sortie','2026-10-02','10000000-0000-0000-0000-00000000000a'),
+     ('aaaaaaaa-0000-0000-0000-000000000001','mvt-btc',5,'entrée','2026-10-02','30000000-0000-0000-0000-00000000000a')$q$);
+select qa.cas('  … suppression de Bitcoin (arrivée du virement) refusée', 'authenticated', :A,
   $q$delete from public.comptes where id='30000000-0000-0000-0000-00000000000a'$q$, '23503');
 select qa.cas('Supprimer un compte sans tx mais avec soldes : accepté', 'authenticated', :A,
   $q$delete from public.comptes where id='20000000-0000-0000-0000-00000000000a'$q$);
