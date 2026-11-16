@@ -15,7 +15,7 @@ const f=new Function(html.slice(debut,fin)+
 
 let ko=0,n=0;
 const cas=(nom,fn)=>{n++;try{fn();console.log('OK  '+nom);}catch(e){ko++;console.log('KO  '+nom+' : '+e.message);}};
-const base={description:'Courses',montant:12.5,date:'2026-10-03',type:'sortie',compteId:'k1',compteDestId:null};
+const base={description:'Courses',montant:12.5,date:'2026-10-03',type:'sortie',compteId:'k1'};
 const COMPTES=[{id:'k1',nom:'CCP Banque fictive',par_defaut:true},{id:'k2',nom:'Livret A'},{id:'k3',nom:'Livret DD'}];
 
 // lireMontant
@@ -49,29 +49,30 @@ cas('valide : montant 9999999999,996 (arrondi au-dessus du max)',()=>assert.matc
 cas('valide : date vide',()=>assert.match(v({date:''}),/date/));
 cas('valide : sortie sans compte refusée',()=>assert.match(v({compteId:null}),/compte/));
 cas('valide : ancienne tx sans compte acceptée si autorisé',()=>assert.strictEqual(v({compteId:null},{compteObligatoire:false}),null));
-cas('valide : mouvement complet',()=>assert.strictEqual(v({type:'mouvement',compteId:'k2',compteDestId:'k1'}),null));
-cas('valide : mouvement sans Depuis',()=>assert.match(v({type:'mouvement',compteId:null,compteDestId:'k1'}),/Depuis/));
-cas('valide : mouvement sans Vers',()=>assert.match(v({type:'mouvement',compteId:'k1',compteDestId:null}),/Vers/));
-cas('valide : mouvement même compte (critère #6)',()=>assert.match(v({type:'mouvement',compteId:'k1',compteDestId:'k1'}),/différents/));
-cas('valide : mouvement sans compte refusé même si « sans compte » autorisé',()=>assert.match(v({type:'mouvement',compteId:null,compteDestId:'k1'},{compteObligatoire:false}),/Depuis/));
+cas('valide : entrée complète',()=>assert.strictEqual(v({type:'entrée'}),null));
+cas('valide : sortie sans compte acceptée si « sans compte » autorisé',()=>assert.strictEqual(v({compteId:null},{compteObligatoire:false}),null));
+cas('valide : message de montant sans « mouvement » (#69)',()=>assert.doesNotMatch(v({montant:-1}),/mouvement/));
 
 // construireLigneTx
-cas('ligne : sortie -> compte_dest_id null, catégorie gardée',()=>{
+cas('ligne : sortie -> catégorie gardée, sans compte_dest_id (#69)',()=>{
   const l=f.construireLigneTx({...base,categorieId:'c1',tricount:'oui',epingle:1,note:''});
-  assert.deepStrictEqual(l,{description:'Courses',montant:12.5,type:'sortie',date:'2026-10-03',compte_id:'k1',compte_dest_id:null,categorie_id:'c1',tricount:'oui',epingle:true,note:null});
+  assert.deepStrictEqual(l,{description:'Courses',montant:12.5,type:'sortie',date:'2026-10-03',compte_id:'k1',categorie_id:'c1',tricount:'oui',epingle:true,note:null});
 });
-cas('ligne : mouvement -> sans catégorie ni Tricount',()=>{
-  const l=f.construireLigneTx({...base,type:'mouvement',compteId:'k2',compteDestId:'k1',categorieId:'c1',tricount:'oui'});
-  assert.strictEqual(l.compte_id,'k2');assert.strictEqual(l.compte_dest_id,'k1');
-  assert.strictEqual(l.categorie_id,null);assert.strictEqual(l.tricount,'non');
+cas('ligne : compte_dest_id jamais envoyée, même si la saisie en contient une (#69, #86)',()=>{
+  for(const type of ['entrée','sortie']) assert.ok(!('compte_dest_id' in f.construireLigneTx({...base,type,compteDestId:'k3'})),type);
 });
-cas('ligne : entrée avec compteDestId résiduel -> null (contrainte #3)',()=>assert.strictEqual(f.construireLigneTx({...base,type:'entrée',compteDestId:'k3'}).compte_dest_id,null));
+cas('ligne : entrée de virement interne -> catégorie et Tricount gardés',()=>{
+  const l=f.construireLigneTx({...base,type:'entrée',compteId:'k2',categorieId:'cv',tricount:'non'});
+  assert.strictEqual(l.compte_id,'k2');assert.strictEqual(l.categorie_id,'cv');assert.strictEqual(l.tricount,'non');
+});
+cas('ligne : Tricount absent -> non',()=>assert.strictEqual(f.construireLigneTx(base).tricount,'non'));
 cas('ligne : montant arrondi au centime',()=>assert.strictEqual(f.construireLigneTx({...base,montant:12.345}).montant,12.35));
 cas('ligne : pas de user_id (ajouté à l\'insert seulement)',()=>assert.ok(!('user_id' in f.construireLigneTx(base))));
 
 // messageErreurSupabase
 const m=e=>f.messageErreurSupabase(e);
 cas('erreur 23514',()=>assert.match(m({code:'23514',message:'violates check'}),/positif.*\(erreur 23514\)/));
+cas('erreur 23514 : plus de mention des mouvements (#69)',()=>assert.doesNotMatch(m({code:'23514',message:'x'}),/mouvement/));
 cas('erreur 22003',()=>assert.match(m({code:'22003',message:'numeric field overflow'}),/trop grand.*22003/));
 cas('erreur 23503',()=>assert.match(m({code:'23503',message:'fk'}),/compte.*23503/));
 cas('erreur 42501',()=>assert.match(m({code:'42501',message:'rls'}),/session.*42501/));
@@ -82,7 +83,8 @@ cas('pas d\'erreur -> chaîne vide',()=>assert.strictEqual(m(null),''));
 
 // libelleCompteTx
 cas('libellé : sortie',()=>assert.strictEqual(f.libelleCompteTx({type:'sortie',compte_id:'k1'},COMPTES),'CCP Banque fictive'));
-cas('libellé : mouvement',()=>assert.strictEqual(f.libelleCompteTx({type:'mouvement',compte_id:'k2',compte_dest_id:'k1'},COMPTES),'Livret A → CCP Banque fictive'));
+cas('libellé : entrée sur le livret',()=>assert.strictEqual(f.libelleCompteTx({type:'entrée',compte_id:'k2'},COMPTES),'Livret A'));
+cas('libellé : plus de « Depuis → Vers » (#69)',()=>assert.strictEqual(f.libelleCompteTx({type:'sortie',compte_id:'k2',compte_dest_id:'k1'},COMPTES),'Livret A'));
 cas('libellé : sans compte -> vide',()=>assert.strictEqual(f.libelleCompteTx({type:'sortie',compte_id:null},COMPTES),''));
 cas('libellé : compte inconnu -> ?',()=>assert.strictEqual(f.libelleCompteTx({type:'sortie',compte_id:'zz'},COMPTES),'?'));
 
