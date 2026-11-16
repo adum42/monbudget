@@ -2036,13 +2036,9 @@ function renderCharts(){
   chartMonths=new Chart(document.getElementById('chart-months'),{type:'bar',data:{labels:mlabels,datasets:[{label:'Entrées',data:incomes,backgroundColor:'rgba(34,201,122,0.7)',borderRadius:4},{label:'Sorties',data:expenses,backgroundColor:'rgba(240,82,82,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7A7D8A',font:{size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#7A7D8A'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#7A7D8A',callback:v=>v+' €'},grid:{color:'rgba(255,255,255,0.04)'}}}}});
 }
 
-// Fermer modales au clic extérieur
-['tx-modal','cat-modal','compte-modal','solde-modal'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',function(e){
-    if(e.target!==this) return;
-    if(id==='cat-modal') closeCatModal(); else if(id==='solde-modal') closeSoldeModal(); else this.classList.remove('open');
-  });
-});
+// Pas de fermeture au clic extérieur (#71) : les 4 modales (transaction, catégorie, compte,
+// solde) se ferment uniquement par « Annuler » / « Fermer », la croix ✕ ou Échap,
+// pour ne pas perdre une saisie en cours.
 
 // Raccourcis clavier
 document.addEventListener('keydown',function(e){
