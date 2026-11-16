@@ -56,7 +56,7 @@ Un ticket sans migration saute les étapes 4 et 5 (recette sur la preview, donc 
 - Ne jamais committer de clé `service_role` ni de secret. Les clés `anon` présentes dans `index.html` sont publiques par nature, la sécurité repose sur la RLS.
 - Données fictives uniquement sur TEST ; aucune donnée ne circule de la prod vers test. Aucun agent ne saisit ni ne lit de mot de passe (l'utilisateur de test est dans les secrets GitHub `TEST_EMAIL` / `TEST_PASSWORD`).
 - Toute nouvelle table : colonne `user_id uuid references auth.users` + RLS activée + politiques `auth.uid() = user_id`.
-- Les transactions de type `mouvement` (virements internes) sont exclues de toutes les statistiques.
+- Un virement interne se saisit en deux opérations (une sortie et une entrée) dans la catégorie cochée « Mouvement de compte » (`categories.mouvement_compte`, une seule par utilisateur). Ses opérations comptent dans les soldes des comptes et sont exclues de toutes les métriques et statistiques.
 
 ## Conventions git
 

@@ -34,7 +34,7 @@ Procédure complète : `supabase/README.md`. En résumé :
 
 - Noms en français, minuscules, sans accents : `solde_initial`, `date_cible`.
 - Toute table : `id uuid default gen_random_uuid()`, `user_id uuid not null references auth.users`, `created_at timestamptz default now()`, RLS activée, politique `auth.uid() = user_id`.
-- Montants : `numeric(12,2)`, toujours positifs. Le sens vient du type (`entrée`, `sortie`, `mouvement`).
+- Montants : `numeric(12,2)`, toujours positifs. Le sens vient du type (`entrée`, `sortie` ; le type `mouvement` est retiré depuis #68, un virement interne = une sortie + une entrée dans la catégorie cochée `mouvement_compte`).
 - Vues : `create view … with (security_invoker = on)` pour que la RLS s'applique.
 - Valeurs contrôlées par `check (… in (…))`, cohérent avec l'existant.
 
