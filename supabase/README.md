@@ -110,6 +110,24 @@ Script : [`supabase/seed/donnees-test.sql`](seed/donnees-test.sql). Il efface pu
 1. Dashboard du projet **TEST « monbudget-test » `ebupazakzfbpptmlrzze`** : vérifier le nom du projet ouvert.
 2. *Authentication* → *Users* : copier l'UID de l'utilisateur de test.
 3. *SQL Editor* : coller le contenu du script, remplacer `00000000-0000-0000-0000-000000000000` de `v_user_id` par cet UID (ne pas committer l'UID), exécuter.
-4. Message attendu : « Jeu de données TEST recréé : 9 catégories, 4 comptes, 6 soldes, 42 transactions dont 14 opérations de virement interne (7 virements), sur 3 mois. »
+4. Résultat affiché : « Success. No rows returned ». C'est normal : l'éditeur SQL du dashboard n'affiche pas les `raise notice`, donc le bilan du script (« Jeu de données TEST recréé : … ») n'y apparaît jamais. Il ne s'affiche qu'avec `psql` (Postgres local).
+5. Contrôle : dans un nouvel onglet de l'éditeur, exécuter la requête ci-dessous (lecture seule, sans UID à renseigner). Résultat attendu : **9 / 4 / 6 / 42 / 14 / 0.00**.
+
+```sql
+-- Contrôle du jeu de données TEST (#21, #68) : lecture seule
+with u as (select user_id from public.categories where nom = 'TEST Virement interne'),
+     vir as (select t.* from public.transactions t
+             join public.categories c on c.id = t.categorie_id and c.mouvement_compte
+             where t.user_id in (select user_id from u))
+select
+  (select count(*) from public.categories   where user_id in (select user_id from u)) as categories,
+  (select count(*) from public.comptes      where user_id in (select user_id from u)) as comptes,
+  (select count(*) from public.soldes       where user_id in (select user_id from u)) as soldes,
+  (select count(*) from public.transactions where user_id in (select user_id from u)) as transactions,
+  (select count(*) from vir)                                                         as operations_virement,
+  (select coalesce(sum(case when type = 'entrée' then montant else -montant end), 0) from vir) as somme_virements;
+```
+
+`somme_virements` doit valoir 0 : chaque virement interne est une sortie et une entrée du même montant. Des 0 partout signifient que le script n'est pas passé (aucune catégorie « TEST Virement interne »).
 
 Un agent peut aussi le lancer via `execute_sql` avec `project_id = ebupazakzfbpptmlrzze` (Quentin, voir les règles plus haut). Si une migration ajoute une colonne obligatoire, mettre le script à jour dans le même ticket.
