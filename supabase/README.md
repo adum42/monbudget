@@ -75,6 +75,7 @@ Le projet test a été créé vide le 29/10/2026 (#19), aligné sur la prod d'al
 | 4 | `add_note_to_transactions` | `supabase/bootstrap/04_add_note_to_transactions.sql` | SQL prod identique |
 | 5 | `etape1_comptes_tous_types_virements` | `supabase/migrations/202610291400_etape1_comptes_tous_types_virements.sql` | #3 : appliquée sur test le 02/11/2026 (version `20261102102800`), puis sur prod (version `20261102103500`) |
 | 6 | `vue_soldes_comptes` | `supabase/migrations/202611031145_vue_soldes_comptes.sql` | #5 : appliquée sur test puis sur prod le 03/11/2026, inscrite avec la version `202611031145` sur les deux bases |
+| 7 | `mouvement_de_compte` | `supabase/migrations/202611161145_mouvement_de_compte.sql` | #68 : à appliquer (sur test, supprimer d'abord les mouvements fictifs, voir le ticket) |
 
 Le schéma `backup_v1` n'est volontairement pas reproduit sur test.
 
@@ -98,7 +99,7 @@ Les empreintes ne se comparent qu'entre résultats d'une **même** requête. Si 
 
 ## Jeu de données de test (#21)
 
-Script : [`supabase/seed/donnees-test.sql`](seed/donnees-test.sql). Il efface puis recrée les données de **l'utilisateur de test seulement** (les autres utilisateurs ne sont pas touchés) : 8 catégories, 4 comptes (courant par défaut, livret, investissement, espèces), 6 soldes et 35 transactions sur le mois en cours et les deux précédents, dont 7 mouvements. Tout est fictif et libellé `TEST …`. Les dates suivent le mois en cours : l'écran du mois n'est jamais vide.
+Script : [`supabase/seed/donnees-test.sql`](seed/donnees-test.sql). Il efface puis recrée les données de **l'utilisateur de test seulement** (les autres utilisateurs ne sont pas touchés) : 9 catégories (dont « TEST Virement interne », cochée « Mouvement de compte »), 4 comptes (courant par défaut, livret, investissement, espèces), 6 soldes et 42 transactions sur le mois en cours et les deux précédents, dont 7 virements internes saisis chacun en une sortie + une entrée (14 opérations, #68). Il nécessite la migration `202611161145_mouvement_de_compte` (#68). Tout est fictif et libellé `TEST …`. Les dates suivent le mois en cours : l'écran du mois n'est jamais vide.
 
 **Garde-fous** : le script est un seul bloc `do` (tout ou rien) et s'arrête sans rien modifier si :
 - le schéma `backup_v1` existe, c'est-à-dire si la base est la **PROD** `artvpflfhvouyngzgqob` ;
@@ -109,6 +110,6 @@ Script : [`supabase/seed/donnees-test.sql`](seed/donnees-test.sql). Il efface pu
 1. Dashboard du projet **TEST « monbudget-test » `ebupazakzfbpptmlrzze`** : vérifier le nom du projet ouvert.
 2. *Authentication* → *Users* : copier l'UID de l'utilisateur de test.
 3. *SQL Editor* : coller le contenu du script, remplacer `00000000-0000-0000-0000-000000000000` de `v_user_id` par cet UID (ne pas committer l'UID), exécuter.
-4. Message attendu : « Jeu de données TEST recréé : 8 catégories, 4 comptes, 6 soldes, 35 transactions dont 7 mouvements, sur 3 mois. »
+4. Message attendu : « Jeu de données TEST recréé : 9 catégories, 4 comptes, 6 soldes, 42 transactions dont 14 opérations de virement interne (7 virements), sur 3 mois. »
 
 Un agent peut aussi le lancer via `execute_sql` avec `project_id = ebupazakzfbpptmlrzze` (Quentin, voir les règles plus haut). Si une migration ajoute une colonne obligatoire, mettre le script à jour dans le même ticket.
