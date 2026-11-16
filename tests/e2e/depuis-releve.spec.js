@@ -22,7 +22,7 @@ async function demarrer(page,base,{releve=2345.80,transactions=[]}={}){
   await expect(carte(page,COURANT).locator('.compte-voyant')).toBeVisible();
 }
 const sortie=(id,date,montant,m={})=>({id,user_id:ID_USER,description:'TEST QA '+id,montant,type:'sortie',categorie_id:null,
-  date,tricount:'non',epingle:false,note:null,compte_id:'k1',compte_dest_id:null,...m});
+  date,tricount:'non',epingle:false,note:null,compte_id:'k1',...m});
 
 test('sans opération après le relevé : carte inchangée',async({app,base})=>{
   await demarrer(app,base);

@@ -38,17 +38,19 @@ const UTILISATEUR={id:'00000000-0000-4000-8000-0000000000a1',aud:'authenticated'
 function donneesInitiales(){
   return {
     categories:[
-      {id:'c1',user_id:UTILISATEUR.id,nom:'TEST QA Courses',emoji:'🛒',couleur:'#22C97A',type:'les deux'},
-      {id:'c2',user_id:UTILISATEUR.id,nom:'TEST QA Loisirs',emoji:'🎮',couleur:'#8B5CF6',type:'les deux'},
+      {id:'c1',user_id:UTILISATEUR.id,nom:'TEST QA Courses',emoji:'🛒',couleur:'#22C97A',type:'les deux',mouvement_compte:false},
+      {id:'c2',user_id:UTILISATEUR.id,nom:'TEST QA Loisirs',emoji:'🎮',couleur:'#8B5CF6',type:'les deux',mouvement_compte:false},
+      // Catégorie cochée « Mouvement de compte » (#68), comme « Virement interne » en prod ; aucune transaction au départ.
+      {id:'cv',user_id:UTILISATEUR.id,nom:'TEST QA Virement interne',emoji:'🔁',couleur:'#5B6EF5',type:'les deux',mouvement_compte:true},
     ],
     comptes:[
       {id:'k1',user_id:UTILISATEUR.id,nom:'TEST QA Compte courant',type:'courant',par_defaut:true,couleur:'#5B6EF5',solde_initial:1000,date_solde_initial:'2026-09-30',plafond:null},
       {id:'k2',user_id:UTILISATEUR.id,nom:'TEST QA Livret',type:'livret',par_defaut:false,couleur:'#22C97A',solde_initial:500,date_solde_initial:'2026-09-30',plafond:null},
     ],
     transactions:[
-      {id:'t1',user_id:UTILISATEUR.id,description:'TEST QA Salaire',montant:2000,type:'entrée',categorie_id:null,date:'2026-11-01',tricount:'non',epingle:false,note:null,compte_id:'k1',compte_dest_id:null},
-      {id:'t2',user_id:UTILISATEUR.id,description:'TEST QA Boulangerie',montant:4.2,type:'sortie',categorie_id:'c1',date:'2026-11-03',tricount:'non',epingle:true,note:null,compte_id:'k1',compte_dest_id:null},
-      {id:'t3',user_id:UTILISATEUR.id,description:'TEST QA Loyer octobre',montant:650,type:'sortie',categorie_id:null,date:'2026-10-05',tricount:'non',epingle:false,note:null,compte_id:'k1',compte_dest_id:null},
+      {id:'t1',user_id:UTILISATEUR.id,description:'TEST QA Salaire',montant:2000,type:'entrée',categorie_id:null,date:'2026-11-01',tricount:'non',epingle:false,note:null,compte_id:'k1'},
+      {id:'t2',user_id:UTILISATEUR.id,description:'TEST QA Boulangerie',montant:4.2,type:'sortie',categorie_id:'c1',date:'2026-11-03',tricount:'non',epingle:true,note:null,compte_id:'k1'},
+      {id:'t3',user_id:UTILISATEUR.id,description:'TEST QA Loyer octobre',montant:650,type:'sortie',categorie_id:null,date:'2026-10-05',tricount:'non',epingle:false,note:null,compte_id:'k1'},
     ],
     soldes:[],
     v_soldes_comptes:[],   // vue de #5 : jamais lue telle quelle, recalculée à chaque lecture (vueSoldesComptes, #66)
@@ -64,10 +66,11 @@ function sessionFactice(){
 }
 
 // Vue v_soldes_comptes (#5), recalculée à partir des tables comme le fait Postgres (#66) :
-// solde calculé = solde initial + entrées − sorties − mouvements sortants + mouvements entrants,
+// solde calculé = solde initial + entrées − sorties (plus de mouvement depuis #68 : un virement interne
+// est une sortie + une entrée),
 // transactions datées à partir de date_solde_initial ; dernier relevé, écart à la date du relevé
 // et jours depuis le relevé (« aujourd'hui » = date de l'horloge figée, à Paris).
-// Voir supabase/migrations/202611031145_vue_soldes_comptes.sql.
+// Voir supabase/migrations/202611161145_mouvement_de_compte.sql (vue recréée par #68).
 const AUJOURDHUI=HEURE_FIGEE.toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'});   // 2026-11-04
 const joursEntre=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/86400000);
 function vueSoldesComptes(t){
@@ -75,12 +78,9 @@ function vueSoldesComptes(t){
     const debut=c.date_solde_initial||'0000-01-01';
     const releve=t.soldes.filter(s=>s.compte_id===c.id&&s.user_id===c.user_id)
       .sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
-    const flux=[
-      ...t.transactions.filter(x=>x.compte_id===c.id)
-        .map(x=>({date:x.date,delta:x.type==='entrée'?Number(x.montant):-Number(x.montant)})),
-      ...t.transactions.filter(x=>x.compte_dest_id===c.id&&x.type==='mouvement')
-        .map(x=>({date:x.date,delta:Number(x.montant)})),
-    ].filter(x=>x.date>=debut);
+    const flux=t.transactions.filter(x=>x.compte_id===c.id)
+      .map(x=>({date:x.date,delta:x.type==='entrée'?Number(x.montant):-Number(x.montant)}))
+      .filter(x=>x.date>=debut);
     const somme=l=>l.reduce((s,x)=>s+x.delta,0);
     const initial=Number(c.solde_initial);
     const aDate=releve&&releve.date>=debut?initial+somme(flux.filter(x=>x.date<=releve.date)):null;
@@ -151,8 +151,20 @@ function creerFausseBase(){
       const code=b.erreurForcee;b.erreurForcee=null;
       return route.fulfill({status:400,json:{code,message:'erreur simulée '+code,details:null,hint:null},headers:CORS});
     }
+    // Contraintes de la vraie base reproduites ici : type entrée / sortie (#68), une seule catégorie
+    // « Mouvement de compte » par utilisateur (index unique partiel non déferrable, #68 -> 23505).
+    const refus=code=>route.fulfill({status:400,json:{code,message:'contrainte simulée '+code,details:null,hint:null},headers:CORS});
+    const apres=methode==='POST'?[].concat(corps).map(l=>({id:null,...l}))
+      :methode==='PATCH'?b.tables[table].filter(l=>correspond(l,f)).map(l=>({...l,...corps})):[];
+    if(table==='transactions'&&apres.some(l=>!['entrée','sortie'].includes(l.type))) return refus('23514');
+    if(table==='categories'&&apres.length){
+      const ids=new Set(apres.map(l=>l.id));
+      const cochees=[...b.tables.categories.filter(c=>!ids.has(c.id)),...apres].filter(c=>c.mouvement_compte===true);
+      const parUser={};
+      for(const c of cochees) if((parUser[c.user_id]=(parUser[c.user_id]||0)+1)>1) return refus('23505');
+    }
     if(methode==='POST'){
-      for(const ligne of [].concat(corps)) b.tables[table].push({id:'nouveau-'+(++b.compteur),...ligne});
+      for(const ligne of [].concat(corps)) b.tables[table].push({id:'nouveau-'+(++b.compteur),...(table==='categories'?{mouvement_compte:false}:{}),...ligne});
       return route.fulfill({status:201,body:'',headers:CORS});
     }
     if(methode==='PATCH'){

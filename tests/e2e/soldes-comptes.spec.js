@@ -26,14 +26,13 @@ async function attendreModale(page){
   await expect(page.locator('#tx-modal')).toHaveClass(/open/);
   await expect(page.locator('#modal-tx-desc')).toBeFocused();
 }
-async function nouvelle(page,bouton,{desc,montant,compte,depuis,vers}){
+async function nouvelle(page,bouton,{desc,montant,compte,categorie}){
   await page.getByRole('button',{name:bouton}).click();
   await attendreModale(page);
   await page.fill('#modal-tx-desc',desc);
   await page.fill('#modal-tx-amount',String(montant));
   if(compte) await page.selectOption('#modal-tx-compte',compte);
-  if(depuis) await page.selectOption('#modal-tx-depuis',depuis);
-  if(vers) await page.selectOption('#modal-tx-vers',vers);
+  if(categorie) await page.selectOption('#modal-tx-cat',categorie);
   await page.click('#tx-modal-save');
   await expect(page.locator('#tx-modal')).not.toHaveClass(/open/);
 }
@@ -57,8 +56,9 @@ test('sortie : le solde du compte diminue',async({app})=>{
   await verifierSoldes(app,2333.30,500);
 });
 
-test('mouvement : la source diminue, la destination augmente, le patrimoine ne bouge pas',async({app})=>{
-  await nouvelle(app,'⇄ Mouvement entre comptes',{desc:'TEST QA Virement livret',montant:'300',depuis:'k1',vers:'k2'});
+test('virement interne (#69) : sortie + entrée « Mouvement de compte », le départ diminue, l\'arrivée augmente, le patrimoine ne bouge pas',async({app})=>{
+  await nouvelle(app,'− Sortie d\'argent',{desc:'TEST QA Virement livret',montant:'300',compte:'k1',categorie:'cv'});
+  await nouvelle(app,'+ Entrée d\'argent',{desc:'TEST QA Virement livret',montant:'300',compte:'k2',categorie:'cv'});
   await verifierSoldes(app,2045.80,800);
 });
 
