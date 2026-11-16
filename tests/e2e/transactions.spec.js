@@ -27,8 +27,9 @@ test('créer puis supprimer une transaction',async({app,base})=>{
   expect(base.ecritures[0]).toMatchObject({methode:'POST',table:'transactions'});
   expect(base.ecritures[0].corps[0]).toMatchObject({
     description:'TEST QA Pharmacie',montant:12.5,type:'sortie',date:'2026-11-04',
-    compte_id:'k1',compte_dest_id:null,user_id:'00000000-0000-4000-8000-0000000000a1',
+    compte_id:'k1',user_id:'00000000-0000-4000-8000-0000000000a1',
   });
+  expect(base.ecritures[0].corps[0]).not.toHaveProperty('compte_dest_id');   // #69, avant la suppression de la colonne (#86)
 
   // 2. Suppression en deux temps : « Supprimer » puis « Confirmer la suppression »
   await ligne.click();

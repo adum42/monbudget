@@ -101,12 +101,13 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .tx-amount{font-size:15px;font-weight:600;font-family:'Syne',sans-serif;}
 .tx-amount.green{color:var(--green);}
 .tx-amount.red{color:var(--red);}
-.tx-amount.mvt{color:var(--accent);}
 .btn-confirm:disabled{opacity:.5;cursor:wait;}
 .badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:500;}
 .badge-in{background:var(--green-soft);color:var(--green);}
 .badge-out{background:var(--red-soft);color:var(--red);}
-.badge-mvt{background:var(--accent-soft);color:var(--accent);}
+.cat-texte{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cat-mvt-compte{font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.modal-info{padding:10px 12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:13px;line-height:1.4;}
 .tx-compte{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .badge-tricount{background:rgba(245,158,11,0.15);color:#F59E0B;}
 .badge-tricount-ok{background:rgba(34,201,122,0.15);color:var(--green);}
@@ -259,13 +260,11 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .type-btn{flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;}
 .type-btn.active-in{background:var(--green-soft);border-color:var(--green);color:var(--green);}
 .type-btn.active-out{background:var(--red-soft);border-color:var(--red);color:var(--red);}
-.type-btn.active-mvt{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
 .modal-error{padding:10px 12px;background:var(--red-soft);border:1px solid var(--red);border-radius:var(--radius-sm);color:var(--red);font-size:13px;line-height:1.4;}
-/* Mobile (#6) : 3 boutons de type sur une ligne, pied de modale sur deux lignes si besoin */
+/* Mobile (#6) : boutons de type sur une ligne, pied de modale sur deux lignes si besoin */
 @media (max-width:480px){
   .type-btn{padding:10px 4px;font-size:12px;white-space:nowrap;}
   .modal-footer{flex-wrap:wrap;}
-  #tx-mvt-row{grid-template-columns:minmax(0,1fr);}
 }
 .btn-cancel{padding:9px 18px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:13px;}
 .btn-confirm{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;}
@@ -330,7 +329,6 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <div class="type-toggle">
           <button class="type-btn active-in" id="btn-type-in" onclick="setTxType('entrée')">+ Entrée</button>
           <button class="type-btn" id="btn-type-out" onclick="setTxType('sortie')">− Sortie</button>
-          <button class="type-btn" id="btn-type-mvt" onclick="setTxType('mouvement')">⇄ Mouvement</button>
         </div>
       </div>
       <div class="modal-field">
@@ -350,16 +348,6 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <div class="modal-field" id="tx-compte-row">
         <label for="modal-tx-compte">Compte</label>
         <select id="modal-tx-compte"></select>
-      </div>
-      <div class="modal-row" id="tx-mvt-row" style="display:none">
-        <div class="modal-field">
-          <label for="modal-tx-depuis">Depuis</label>
-          <select id="modal-tx-depuis"></select>
-        </div>
-        <div class="modal-field">
-          <label for="modal-tx-vers">Vers</label>
-          <select id="modal-tx-vers"></select>
-        </div>
       </div>
       <div class="modal-field" id="tx-cat-row">
         <label>Catégorie</label>
@@ -417,6 +405,12 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <input class="emoji-search-input" id="emoji-search" placeholder="🔍  Rechercher..." oninput="filterEmojis()">
       <div class="emoji-cats-row" id="emoji-cats"></div>
       <div class="emoji-grid" id="emoji-grid"></div>
+      <label class="epingle-toggle" for="modal-cat-mvt">
+        <input type="checkbox" id="modal-cat-mvt" onchange="majInfoMouvementCompte()">
+        <span class="epingle-track" style="white-space:nowrap;flex:0 0 auto;">⇄ Mouvement de compte</span>
+        <span class="epingle-hint">Virements entre vos comptes, exclus des statistiques</span>
+      </label>
+      <div class="modal-info" id="cat-modal-info" role="status" style="display:none"></div>
     </div>
     <div class="modal-footer" id="cat-modal-footer">
       <button class="btn-danger" id="cat-modal-delete" style="display:none" onclick="askDeleteCat()">Supprimer</button>
@@ -512,7 +506,6 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;flex-wrap:wrap;">
         <button class="btn-add" style="background:var(--green);" onclick="openTxModal(null,'entrée')">+ Entrée d'argent</button>
         <button class="btn-add" style="background:var(--red);" onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
-        <button class="btn-add" onclick="openTxModal(null,'mouvement')">⇄ Mouvement entre comptes</button>
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -525,7 +518,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         </div>
         <div class="tx-filters">
           <select id="f-sort" onchange="renderTransactions()"><option value="date">Trier : date</option><option value="montant-desc">Montant ↓</option><option value="montant-asc">Montant ↑</option></select>
-          <select id="f-type" onchange="renderTransactions()"><option value="all">Tous</option><option value="entrée">Entrées</option><option value="sortie">Sorties</option><option value="mouvement">Mouvements</option></select>
+          <select id="f-type" onchange="renderTransactions()"><option value="all">Tous</option><option value="entrée">Entrées</option><option value="sortie">Sorties</option></select>
           <select id="f-cat" onchange="renderTransactions()"><option value="all">Toutes catégories</option></select>
           <select id="f-tricount" onchange="renderTransactions()"><option value="all">Tricount : tous</option><option value="non">Hors tricount</option><option value="oui">À valider</option><option value="oui validé">Validés</option></select>
           <select id="f-epingle" onchange="renderTransactions()"><option value="all">Épingle : tous</option><option value="oui">Épinglés</option><option value="non">Non épinglés</option></select>
@@ -560,6 +553,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <button class="btn-add" onclick="openCatModal(null)">+ Nouvelle catégorie</button>
       </div>
       <div class="card">
+        <div class="modal-info" id="cat-info" role="status" style="display:none;margin-bottom:12px;"></div>
         <div class="cat-grid" id="cat-list"><div class="loading">Chargement...</div></div>
       </div>
     </div>
@@ -675,41 +669,33 @@ function compteParDefaut(listeComptes){
 }
 
 // Vérifie la saisie avant envoi. Renvoie un message d'erreur, ou null si tout est bon.
-// saisie : {description, montant (nombre ou NaN), date, type, compteId, compteDestId}
+// saisie : {description, montant (nombre ou NaN), date, type, compteId}
 // options.compteObligatoire : faux seulement pour une ancienne transaction sans compte.
 function validerSaisieTx(saisie,options={}){
   const compteObligatoire=options.compteObligatoire!==false;
   if(!saisie.description) return 'Indiquez une description.';
   const m=saisie.montant;
   if(typeof m!=='number'||Number.isNaN(m)) return 'Indiquez un montant.';
-  if(m<=0) return 'Le montant doit être positif : le sens (entrée, sortie ou mouvement) est donné par le type.';
+  if(m<=0) return 'Le montant doit être positif : le sens (entrée ou sortie) est donné par le type.';
   const arrondi=Math.round(m*100)/100;
   if(arrondi<0.01) return 'Le montant doit être d\'au moins 0,01 €.';
   if(arrondi>MONTANT_MAX) return 'Le montant ne peut pas dépasser 9 999 999 999,99 €.';
   if(!saisie.date) return 'Indiquez une date.';
-  if(saisie.type==='mouvement'){
-    if(!saisie.compteId) return 'Choisissez le compte de départ (« Depuis »).';
-    if(!saisie.compteDestId) return 'Choisissez le compte d\'arrivée (« Vers »).';
-    if(saisie.compteId===saisie.compteDestId) return 'Les comptes « Depuis » et « Vers » doivent être différents.';
-  } else if(compteObligatoire&&!saisie.compteId){
-    return 'Choisissez un compte.';
-  }
+  if(compteObligatoire&&!saisie.compteId) return 'Choisissez un compte.';
   return null;
 }
 
-// Ligne envoyée à Supabase (sans user_id). Un mouvement n'a ni catégorie ni Tricount ;
-// une entrée ou une sortie n'a pas de compte destination (contrainte de #3).
+// Ligne envoyée à Supabase (sans user_id). Depuis #69, plus de type mouvement : compte_dest_id
+// n'est plus envoyée (colonne forcée à null par #68, supprimée par #86).
 function construireLigneTx(saisie){
-  const mvt=saisie.type==='mouvement';
   return {
     description:saisie.description,
     montant:Math.round(saisie.montant*100)/100,
     type:saisie.type,
     date:saisie.date,
     compte_id:saisie.compteId||null,
-    compte_dest_id:mvt?saisie.compteDestId:null,
-    categorie_id:mvt?null:(saisie.categorieId||null),
-    tricount:mvt?'non':(saisie.tricount||'non'),
+    categorie_id:saisie.categorieId||null,
+    tricount:saisie.tricount||'non',
     epingle:!!saisie.epingle,
     note:saisie.note||null
   };
@@ -721,7 +707,7 @@ function messageErreurSupabase(error){
   const code=error.code||'';
   const msg=String(error.message||error);
   const suffixe=code?` (erreur ${code})`:'';
-  if(code==='23514') return 'Enregistrement refusé : le montant doit être strictement positif et un mouvement doit avoir deux comptes différents.'+suffixe;
+  if(code==='23514') return 'Enregistrement refusé : le montant doit être strictement positif.'+suffixe;
   if(code==='22003') return 'Enregistrement refusé : montant trop grand (au plus 9 999 999 999,99 €).'+suffixe;
   if(code==='23503') return 'Enregistrement refusé : un compte choisi est introuvable ou n\'est pas à vous. Rechargez la page et réessayez.'+suffixe;
   if(code==='42501') return 'Action refusée : votre session a peut-être expiré. Reconnectez-vous puis réessayez.'+suffixe;
@@ -729,12 +715,59 @@ function messageErreurSupabase(error){
   return 'Enregistrement impossible : '+msg+suffixe;
 }
 
-// Libellé du compte d'une transaction pour la liste : « Compte » ou « Depuis → Vers ».
+// Libellé du compte d'une transaction pour la liste : nom du compte, '?' s'il est introuvable,
+// '' pour une ancienne transaction sans compte.
 function libelleCompteTx(tx,listeComptes){
-  const nom=id=>{const c=(listeComptes||[]).find(x=>x.id===id);return c?c.nom:'?';};
-  if(tx.type==='mouvement') return `${nom(tx.compte_id)} → ${nom(tx.compte_dest_id)}`;
-  return tx.compte_id?nom(tx.compte_id):'';
+  if(!tx.compte_id) return '';
+  const c=(listeComptes||[]).find(x=>x.id===tx.compte_id);
+  return c?c.nom:'?';
 }
+
+// ══ DÉBUT FONCTIONS PURES MOUVEMENT DE COMPTE (#69) ═══
+// Sans DOM ni Supabase : testables directement (tests/front/ticket69_mouvement_compte.test.js).
+// Une seule catégorie par utilisateur porte mouvement_compte = true (#68, index unique partiel).
+// Ses opérations (sortie + entrée d'un virement interne) restent dans la liste et dans les soldes
+// des comptes, mais sont exclues des métriques du mois, des KPIs, des graphiques et du top 5.
+
+// La catégorie cochée « Mouvement de compte », ou null.
+function categorieMouvementCompte(listeCategories){
+  return (listeCategories||[]).find(c=>c&&c.mouvement_compte===true)||null;
+}
+
+// Vrai si la transaction est dans la catégorie « Mouvement de compte ». On s'appuie sur la liste
+// des catégories (et non sur la jointure de la transaction) : changer de catégorie cochée change
+// l'exclusion sans recharger les transactions.
+function estMouvementDeCompte(tx,listeCategories){
+  if(!tx||tx.categorie_id===null||tx.categorie_id===undefined||tx.categorie_id==='') return false;
+  const cat=categorieMouvementCompte(listeCategories);
+  return !!cat&&String(cat.id)===String(tx.categorie_id);
+}
+
+// Transactions à prendre en compte dans les métriques et les statistiques : toutes sauf celles
+// de la catégorie « Mouvement de compte ». Fonction unique, utilisée partout (#69).
+function txPourStats(txs,listeCategories){
+  const cat=categorieMouvementCompte(listeCategories);
+  const liste=(txs||[]).filter(Boolean);
+  if(!cat) return liste;
+  return liste.filter(t=>String(t.categorie_id)!==String(cat.id));
+}
+
+// Changement de catégorie cochée : la catégorie qu'il faut d'abord décocher (sinon 23505, l'index
+// unique n'est pas déferrable), ou null. catId : catégorie modifiée (null pour une nouvelle).
+function categorieMouvementARetirer(listeCategories,catId,veutMouvement){
+  if(!veutMouvement) return null;
+  const ancienne=categorieMouvementCompte(listeCategories);
+  if(!ancienne||(catId!==null&&catId!==undefined&&String(ancienne.id)===String(catId))) return null;
+  return ancienne;
+}
+
+// Message qui signale qu'une catégorie n'est plus la catégorie « Mouvement de compte ».
+// apres : false avant l'enregistrement (« ne sera plus »), true une fois fait (« n'est plus »).
+function messageMouvementCompteRetire(cat,apres){
+  const nom=cat&&cat.nom?String(cat.nom):'L\'ancienne catégorie';
+  return nom+(apres?' n\'est plus':' ne sera plus')+' la catégorie Mouvement de compte.';
+}
+// ══ FIN FONCTIONS PURES MOUVEMENT DE COMPTE (#69) ═════
 
 // ── DATE DU JOUR : FONCTION PURE (#45) ────────────────
 // Date au format AAAA-MM-JJ dans le fuseau du navigateur (et non en UTC comme toISOString,
@@ -751,8 +784,7 @@ let txSansCompteAutorise=false; // modification d'une ancienne transaction sans 
 let saveTxEnCours=false;
 const TITRES_TX={
   'entrée':{texte:'➕ Entrée d\'argent',couleur:'var(--green)'},
-  'sortie':{texte:'➖ Sortie d\'argent',couleur:'var(--red)'},
-  'mouvement':{texte:'⇄ Mouvement entre comptes',couleur:'var(--accent)'}
+  'sortie':{texte:'➖ Sortie d\'argent',couleur:'var(--red)'}
 };
 
 function optionsComptes(premier){
@@ -782,16 +814,11 @@ function ouvrirModaleTx(tx,mode,defaultType){
   document.getElementById('modal-tx-date').value=(tx&&mode==='edition')?tx.date:dateLocaleISO();
   document.getElementById('modal-tx-note').value=tx?tx.note||'':'';
   document.getElementById('tx-type-toggle-row').style.display=mode==='edition'?'flex':'none';
-  // Comptes : liste « Compte » pour une entrée / sortie, « Depuis » / « Vers » pour un mouvement
-  txSansCompteAutorise=mode==='edition'&&tx.type!=='mouvement'&&!tx.compte_id;
+  txSansCompteAutorise=mode==='edition'&&!tx.compte_id;
   const defaut=compteParDefaut(comptes);
   const compteId=tx?(tx.compte_id||(txSansCompteAutorise?'':defaut)):defaut;
   document.getElementById('modal-tx-compte').innerHTML=optionsComptes(txSansCompteAutorise?'Aucun compte':'Choisir un compte…');
-  document.getElementById('modal-tx-depuis').innerHTML=optionsComptes('Choisir…');
-  document.getElementById('modal-tx-vers').innerHTML=optionsComptes('Choisir…');
   document.getElementById('modal-tx-compte').value=compteId||'';
-  document.getElementById('modal-tx-depuis').value=(tx&&tx.compte_id)||defaut||'';
-  document.getElementById('modal-tx-vers').value=(tx&&tx.type==='mouvement'&&tx.compte_dest_id)||'';
   updateCatSelect();
   document.getElementById('modal-tx-cat').value=(tx&&tx.categorie_id)||'';
   setTxType(currentTxType);
@@ -816,20 +843,9 @@ function resetDeleteConfirm(){
   }
 }
 function setTxType(type){
-  const avant=currentTxType;
   currentTxType=type;
-  const mvt=type==='mouvement';
   document.getElementById('btn-type-in').className='type-btn'+(type==='entrée'?' active-in':'');
   document.getElementById('btn-type-out').className='type-btn'+(type==='sortie'?' active-out':'');
-  document.getElementById('btn-type-mvt').className='type-btn'+(mvt?' active-mvt':'');
-  // En changeant de type, on garde le compte déjà choisi (Compte <-> Depuis)
-  const selCompte=document.getElementById('modal-tx-compte'),selDepuis=document.getElementById('modal-tx-depuis');
-  if(mvt&&avant!=='mouvement'&&selCompte.value) selDepuis.value=selCompte.value;
-  if(!mvt&&avant==='mouvement'&&selDepuis.value) selCompte.value=selDepuis.value;
-  document.getElementById('tx-compte-row').style.display=mvt?'none':'flex';
-  document.getElementById('tx-mvt-row').style.display=mvt?'grid':'none';
-  document.getElementById('tx-cat-row').style.display=mvt?'none':'flex';
-  document.getElementById('tx-tricount-row').style.display=mvt?'none':'flex';
 }
 function setTricount(val){
   currentTricount=val;
@@ -838,14 +854,12 @@ function setTricount(val){
   document.getElementById('tc-btn-valide').className='tricount-btn'+(val==='oui validé'?' active-valide':'');
 }
 function lireSaisieTx(){
-  const mvt=currentTxType==='mouvement';
   return {
     description:document.getElementById('modal-tx-desc').value.trim(),
     montant:lireMontant(document.getElementById('modal-tx-amount').value),
     date:document.getElementById('modal-tx-date').value,
     type:currentTxType,
-    compteId:(mvt?document.getElementById('modal-tx-depuis'):document.getElementById('modal-tx-compte')).value||null,
-    compteDestId:mvt?(document.getElementById('modal-tx-vers').value||null):null,
+    compteId:document.getElementById('modal-tx-compte').value||null,
     categorieId:document.getElementById('modal-tx-cat').value||null,
     tricount:currentTricount,
     epingle:document.getElementById('modal-tx-epingle').checked,
@@ -920,7 +934,7 @@ function messageSuppressionCategorie(cat){
 
 // ── MODAL CAT ─────────────────────────────────────────
 // catSuppressionDepuisListe : fenêtre ouverte par la croix ✕ de la liste (confirmation seule).
-let catSuppressionDepuisListe=false,deleteCatEnCours=false;
+let catSuppressionDepuisListe=false,deleteCatEnCours=false,saveCatEnCours=false;
 function afficherErreurCat(message){
   const el=document.getElementById('cat-modal-error');
   el.textContent=message;el.style.display='block';
@@ -933,18 +947,21 @@ function resetCatFooter(){
   const f=document.getElementById('cat-modal-footer');
   f.innerHTML=`<button class="btn-danger" id="cat-modal-delete" style="display:none" onclick="askDeleteCat()">Supprimer</button>
     <button class="btn-cancel" onclick="closeCatModal()">Annuler</button>
-    <button class="btn-confirm" onclick="saveCat()">Enregistrer</button>`;
+    <button class="btn-confirm" id="cat-modal-save" onclick="saveCat()">Enregistrer</button>`;
   if(editingCatId) document.getElementById('cat-modal-delete').style.display='block';
 }
 function openCatModal(cat){
   editingCatId=cat?cat.id:null;
   catSuppressionDepuisListe=false;
+  afficherInfoCategories('');
   document.getElementById('cat-modal').classList.remove('suppression');
   selectedEmoji=cat?cat.emoji||'📁':'📁';
   document.getElementById('cat-modal-title').textContent=cat?'Modifier la catégorie':'Nouvelle catégorie';
   document.getElementById('modal-cat-nom').value=cat?cat.nom:'';
   document.getElementById('modal-emoji-preview').textContent=selectedEmoji;
   document.getElementById('emoji-search').value='';
+  document.getElementById('modal-cat-mvt').checked=!!(cat&&cat.mouvement_compte);
+  majInfoMouvementCompte();
   effacerErreurCat();
   resetCatFooter();
   currentEmojiCat=Object.keys(EMOJI_CATS)[0];
@@ -958,16 +975,67 @@ function closeCatModal(){
   editingCatId=null;catSuppressionDepuisListe=false;
   effacerErreurCat();resetCatFooter();
 }
+// Case « Mouvement de compte » (#69) : si on la coche sur une autre catégorie que celle déjà cochée,
+// on prévient tout de suite que l'ancienne sera décochée.
+function majInfoMouvementCompte(){
+  const el=document.getElementById('cat-modal-info');
+  const ancienne=categorieMouvementARetirer(categories,editingCatId,document.getElementById('modal-cat-mvt').checked);
+  el.textContent=ancienne?messageMouvementCompteRetire(ancienne,false):'';
+  el.style.display=ancienne?'block':'none';
+}
+// Message affiché au-dessus de la liste des catégories (vide = masqué)
+function afficherInfoCategories(message){
+  const el=document.getElementById('cat-info');
+  el.textContent=message||'';el.style.display=message?'block':'none';
+}
 async function saveCat(){
+  if(saveCatEnCours) return;
   const nom=document.getElementById('modal-cat-nom').value.trim();
-  if(!nom) return;
+  if(!nom){afficherErreurCat('Indiquez un nom.');return;}
+  effacerErreurCat();
   const emoji=selectedEmoji||'📁';
-  if(editingCatId){
-    await sb.from('categories').update({nom,emoji}).eq('id',editingCatId);
-  } else {
-    await sb.from('categories').insert([{user_id:currentUser.id,nom,type:'les deux',emoji}]);
+  const mouvement=document.getElementById('modal-cat-mvt').checked;
+  const aRetirer=categorieMouvementARetirer(categories,editingCatId,mouvement);
+  const bouton=document.getElementById('cat-modal-save');
+  saveCatEnCours=true;if(bouton)bouton.disabled=true;
+  let error=null,etape='';
+  try{
+    // Changement de catégorie cochée : requête 1 = décocher l'ancienne (sinon 23505, #68)
+    if(aRetirer){
+      etape='retrait';
+      ({error}=await sb.from('categories').update({mouvement_compte:false}).eq('id',aRetirer.id));
+    }
+    // Requête 2 = enregistrer la catégorie, case comprise
+    if(!error){
+      etape='enregistrement';
+      const res=editingCatId
+        ?await sb.from('categories').update({nom,emoji,mouvement_compte:mouvement}).eq('id',editingCatId)
+        :await sb.from('categories').insert([{user_id:currentUser.id,nom,type:'les deux',emoji,mouvement_compte:mouvement}]);
+      error=res.error;
+    }
+  }catch(e){error=e;}
+  let message=error?'Enregistrement impossible : '+messageErreurSupabase(error):'';
+  // La 2e requête a échoué après le retrait : on recoche l'ancienne catégorie
+  if(error&&aRetirer&&etape==='enregistrement'){
+    let errRetour=null;
+    try{({error:errRetour}=await sb.from('categories').update({mouvement_compte:true}).eq('id',aRetirer.id));}catch(e){errRetour=e;}
+    if(errRetour) message+=' Attention : '+aRetirer.nom+' n\'a pas pu être recochée « Mouvement de compte », vérifiez-la.';
   }
-  closeCatModal();await loadCategories();
+  saveCatEnCours=false;if(bouton)bouton.disabled=false;
+  if(error){
+    console.error('[monbudget] saveCat ('+etape+')',error);
+    afficherErreurCat(message);
+    if(aRetirer) await rechargerApresCategorie();   // la catégorie cochée a pu changer
+    return;
+  }
+  closeCatModal();
+  afficherInfoCategories(aRetirer?messageMouvementCompteRetire(aRetirer,true):'');
+  await rechargerApresCategorie();
+}
+// Après une écriture sur une catégorie : nom, émoji et exclusion des stats changent partout (#69)
+async function rechargerApresCategorie(){
+  await Promise.all([loadCategories(),loadTransactions()]);
+  renderAll();
 }
 // Croix ✕ de la liste : confirmation de la catégorie de la ligne, et d'elle seule
 function demanderSuppressionCat(id){
@@ -1177,8 +1245,8 @@ function messageErreurCompte(error,action){
 // Renvoie null (carte inchangée) si l'écart n'est pas calculable (aucun relevé, ou relevé antérieur
 // au solde initial : solde_calcule_a_date_banque vaut null) ou si aucune opération n'est datée après le relevé.
 // Sinon {nb, montant, texte} :
-//   - nb      = transactions du compte (compte_id, ou destination d'un mouvement tant que #69 n'est pas
-//               livré) datées strictement après le relevé et à partir du solde initial. Une opération
+//   - nb      = transactions du compte (compte_id ; depuis #69, un virement est une sortie + une entrée)
+//               datées strictement après le relevé et à partir du solde initial. Une opération
 //               du jour même du relevé n'est pas comptée : elle est incluse dans le relevé (règle de #5) ;
 //   - montant = solde_calcule − solde_calcule_a_date_banque, au centime (peut valoir 0) ;
 //   - texte   = « Depuis le relevé (N opération(s)) ».
@@ -1193,8 +1261,7 @@ function opsDepuisReleve(ligne,txs){
   const nb=(txs||[]).filter(t=>{
     if(!t||!t.date) return false;
     const d=String(t.date).slice(0,10);
-    const duCompte=t.compte_id===id||(t.type==='mouvement'&&t.compte_dest_id===id);
-    return duCompte&&d>releve&&d>=debut;
+    return t.compte_id===id&&d>releve&&d>=debut;
   }).length;
   if(!nb) return null;
   const centimes=Math.round(calcule*100)-Math.round(aDate*100);
@@ -1514,8 +1581,14 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 
 // ── DATA ──────────────────────────────────────────────
 async function loadAll(){await Promise.all([loadCategories(),loadTransactions(),loadComptes()]);renderAll();}
+// select('*') : mouvement_compte (#68) est chargée avec le reste (exclusion des stats, #69)
 async function loadCategories(){
-  const{data}=await sb.from('categories').select('*').order('nom');
+  const{data,error}=await sb.from('categories').select('*').order('nom');
+  if(error){
+    console.error('[monbudget] loadCategories',error);
+    document.getElementById('cat-list').innerHTML=`<div class="modal-error">${esc('Chargement des catégories impossible : '+messageErreurSupabase(error))}</div>`;
+    return;
+  }
   categories=data||[];renderCategories();updateCatSelect();
 }
 async function loadTransactions(){
@@ -1554,7 +1627,7 @@ function updateMonthLabel(){
 }
 function txOfMonth(){return transactions.filter(t=>t.date.startsWith(currentMonth));}
 function renderMetrics(){
-  const txs=txOfMonth();
+  const txs=txPourStats(txOfMonth(),categories);   // hors « Mouvement de compte » (#69)
   const income=txs.filter(t=>t.type==='entrée').reduce((s,t)=>s+t.montant,0);
   const expense=txs.filter(t=>t.type==='sortie').reduce((s,t)=>s+t.montant,0);
   const balance=income-expense;
@@ -1577,7 +1650,8 @@ function renderTransactions(){
   const epF=document.getElementById('f-epingle').value;
   const sortF=document.getElementById('f-sort').value;
   const search=(document.getElementById('tx-search').value||'').trim().toLowerCase();
-  // Les mouvements sont listés (pour pouvoir les modifier) mais exclus des métriques et des statistiques
+  // Les opérations « Mouvement de compte » sont listées (et comptent dans les soldes), mais sont
+  // exclues des métriques et des statistiques (txPourStats, #69)
   let txs=viewAllMonths?transactions:txOfMonth();
   if(typeF!=='all') txs=txs.filter(t=>t.type===typeF);
   if(catF!=='all') txs=txs.filter(t=>t.categorie_id===catF);
@@ -1592,17 +1666,17 @@ function renderTransactions(){
   if(erreurChargementTx){list.innerHTML=`<div class="modal-error">${esc(erreurChargementTx)}</div>`;return;}
   if(!txs.length){list.innerHTML=`<div class="empty">Aucune transaction${viewAllMonths?'':' ce mois'}</div>`;return;}
   list.innerHTML=txs.map(t=>{
-    const isEntree=t.type==='entrée',isMvt=t.type==='mouvement';
-    const amountColor=isMvt?'mvt':isEntree?'green':'red';
-    const amountSign=isMvt?'':isEntree?'+':'-';
-    const badgeClass=isMvt?'badge-mvt':isEntree?'badge-in':'badge-out';
-    const badgeLabel=isMvt?'Mouvement':isEntree?'Entrée':'Sortie';
+    const isEntree=t.type==='entrée';
+    const amountColor=isEntree?'green':'red';
+    const amountSign=isEntree?'+':'-';
+    const badgeClass=isEntree?'badge-in':'badge-out';
+    const badgeLabel=isEntree?'Entrée':'Sortie';
     const libCompte=libelleCompteTx(t,comptes);
-    const compteHtml=libCompte?`<span class="tx-compte">${isMvt?'⇄':'🏦'} ${esc(libCompte)}</span>`:'';
+    const compteHtml=libCompte?`<span class="tx-compte">🏦 ${esc(libCompte)}</span>`:'';
     const meta=`${esc(t.date)}${t.categories?' · '+esc(t.categories.emoji||'📁')+' '+esc(t.categories.nom):''}`;
     const noteHtml=t.note?`<span class="tx-note">${esc(t.note)}</span>`:'';
     const tc=t.tricount||'non';
-    const tcBtn=isMvt?'':tc==='oui'
+    const tcBtn=tc==='oui'
       ?`<button class="btn-tricount-validate" data-tc-id="${esc(t.id)}">Valider Tricount</button>`
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
@@ -1671,7 +1745,10 @@ function renderCategories(){
     <div class="cat-item">
       <div class="cat-left">
         <span class="cat-emoji-display">${esc(c.emoji||'📁')}</span>
-        <span class="cat-name">${esc(c.nom)}</span>
+        <div class="cat-texte">
+          <span class="cat-name">${esc(c.nom)}</span>
+          ${c.mouvement_compte?'<span class="cat-mvt-compte" title="Opérations exclues des totaux et des statistiques">⇄ Mouvement de compte</span>':''}
+        </div>
       </div>
       <div class="cat-actions">
         <button class="btn-edit" data-cat-id="${esc(c.id)}">✏️</button>
@@ -1822,7 +1899,7 @@ function switchTab(name){
   if(name==='comptes'){renderComptes();renderChartComptes();}
 }
 function renderStatsKpis(){
-  const txs=txOfMonth().filter(t=>t.type!=='mouvement');
+  const txs=txPourStats(txOfMonth(),categories);   // hors « Mouvement de compte » (#69)
   const income=txs.filter(t=>t.type==='entrée').reduce((s,t)=>s+t.montant,0);
   const expense=txs.filter(t=>t.type==='sortie').reduce((s,t)=>s+t.montant,0);
   const ratio=income>0?Math.max(0,Math.min(100,Math.round((income-expense)/income*100))):0;
@@ -1830,7 +1907,7 @@ function renderStatsKpis(){
   const[y,m]=currentMonth.split('-').map(Number);
   const prevDate=new Date(y,m-2,1);
   const prevMonth=`${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
-  const prevExpense=transactions.filter(t=>t.type==='sortie'&&t.date.startsWith(prevMonth)).reduce((s,t)=>s+t.montant,0);
+  const prevExpense=txPourStats(transactions,categories).filter(t=>t.type==='sortie'&&t.date.startsWith(prevMonth)).reduce((s,t)=>s+t.montant,0);
   const expDiff=prevExpense>0?Math.round((expense-prevExpense)/prevExpense*100):null;
   const kpisEl=document.getElementById('stats-kpis');
   kpisEl.innerHTML=`
@@ -1873,7 +1950,8 @@ function renderStatsKpis(){
 function renderCharts(){
   renderStatsKpis();
   const COLORS=['#5B6EF5','#22C97A','#F05252','#F59E0B','#8B5CF6','#EC4899','#14B8A6','#F97316','#06B6D4','#84CC16'];
-  const txs=txOfMonth().filter(t=>t.type==='sortie');
+  const txsStats=txPourStats(transactions,categories);   // hors « Mouvement de compte » (#69)
+  const txs=txPourStats(txOfMonth(),categories).filter(t=>t.type==='sortie');
   const catMap={};
   txs.forEach(t=>{const key=t.categories?(t.categories.emoji||'📁')+' '+t.categories.nom:'Autre';if(!catMap[key])catMap[key]=0;catMap[key]+=t.montant;});
   const catLabels=Object.keys(catMap),catData=catLabels.map(k=>catMap[k]),catColors=catLabels.map((_,i)=>COLORS[i%COLORS.length]);
@@ -1898,8 +1976,8 @@ function renderCharts(){
   }
   const months=[];
   for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);}
-  const incomes=months.map(m=>transactions.filter(t=>t.type==='entrée'&&t.date.startsWith(m)).reduce((s,t)=>s+t.montant,0));
-  const expenses=months.map(m=>transactions.filter(t=>t.type==='sortie'&&t.date.startsWith(m)).reduce((s,t)=>s+t.montant,0));
+  const incomes=months.map(m=>txsStats.filter(t=>t.type==='entrée'&&t.date.startsWith(m)).reduce((s,t)=>s+t.montant,0));
+  const expenses=months.map(m=>txsStats.filter(t=>t.type==='sortie'&&t.date.startsWith(m)).reduce((s,t)=>s+t.montant,0));
   const mlabels=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1).toLocaleDateString('fr-FR',{month:'short'});});
   if(chartMonths) chartMonths.destroy();
   chartMonths=new Chart(document.getElementById('chart-months'),{type:'bar',data:{labels:mlabels,datasets:[{label:'Entrées',data:incomes,backgroundColor:'rgba(34,201,122,0.7)',borderRadius:4},{label:'Sorties',data:expenses,backgroundColor:'rgba(240,82,82,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7A7D8A',font:{size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#7A7D8A'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#7A7D8A',callback:v=>v+' €'},grid:{color:'rgba(255,255,255,0.04)'}}}}});

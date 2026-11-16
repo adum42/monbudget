@@ -22,7 +22,7 @@ const cas=(nom,fn)=>{n++;try{fn();console.log('OK  '+nom);}catch(e){ko++;console
 const ligne=(m={})=>({compte_id:'k1',solde_initial:30,date_solde_initial:'2026-10-31',
   solde_calcule:19.5,dernier_solde_banque:21,date_dernier_solde_banque:'2026-11-05',
   solde_calcule_a_date_banque:21,ecart:0,nb_jours_depuis_releve:0,...m});
-const tx=(date,m={})=>({id:'t'+date+(m.id||''),compte_id:'k1',compte_dest_id:null,type:'sortie',montant:1.5,date,...m});
+const tx=(date,m={})=>({id:'t'+date+(m.id||''),compte_id:'k1',type:'sortie',montant:1.5,date,...m});
 const avant=[tx('2026-11-01',{type:'entrée',montant:10}),tx('2026-11-03',{montant:19})];
 
 // ── Critère d'acceptation principal
@@ -83,13 +83,13 @@ cas('transactions d\'un autre compte ignorées',()=>
   assert.strictEqual(opsDepuisReleve(ligne({solde_calcule:21}),[tx('2026-11-06',{compte_id:'k2'})]),null));
 cas('transaction sans compte ignorée',()=>
   assert.strictEqual(opsDepuisReleve(ligne({solde_calcule:21}),[tx('2026-11-06',{compte_id:null})]),null));
-cas('mouvement sortant compté (tant que #69 n\'est pas livré)',()=>
-  assert.strictEqual(opsDepuisReleve(ligne(),[tx('2026-11-06',{type:'mouvement',compte_dest_id:'k2'})]).nb,1));
-cas('mouvement entrant compté',()=>{
-  const r=opsDepuisReleve(ligne({solde_calcule:121}),[tx('2026-11-06',{type:'mouvement',compte_id:'k2',compte_dest_id:'k1',montant:100})]);
+cas('virement interne (#69) : la sortie compte pour le compte de départ, l\'entrée pour l\'arrivée',()=>{
+  const virement=[tx('2026-11-06',{id:'s',categorie_id:'cv',montant:100}),tx('2026-11-06',{id:'e',compte_id:'k2',type:'entrée',categorie_id:'cv',montant:100})];
+  assert.strictEqual(opsDepuisReleve(ligne({solde_calcule:-79}),virement).nb,1);
+  const r=opsDepuisReleve(ligne({compte_id:'k2',solde_calcule:121}),virement);
   assert.strictEqual(r.nb,1);assert.strictEqual(r.montant,100);
 });
-cas('compte_dest_id d\'une entrée ou sortie ignoré',()=>
+cas('compte_dest_id résiduelle ignorée (#69 : seul compte_id compte)',()=>
   assert.strictEqual(opsDepuisReleve(ligne({solde_calcule:21}),[tx('2026-11-06',{compte_id:'k2',compte_dest_id:'k1'})]),null));
 cas('opération antérieure au solde initial ignorée (relevé futur au solde initial)',()=>{
   // Relevé le 05/11, solde initial le 10/11 : impossible en vrai (vue -> null), on vérifie la borne seule.

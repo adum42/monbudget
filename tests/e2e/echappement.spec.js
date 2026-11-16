@@ -18,7 +18,7 @@ async function chargerDonneesPiegees(page,base){
     {id:'c5',user_id:ID_USER,nom:PIEGE,emoji:'<i>é</i>',couleur:'#14B8A6',type:'les deux'},
   );
   const sortie=(id,description,montant,categorie_id)=>({id,user_id:ID_USER,description,montant,type:'sortie',categorie_id,
-    date:'2026-11-02',tricount:'non',epingle:false,note:null,compte_id:'k1',compte_dest_id:null});
+    date:'2026-11-02',tricount:'non',epingle:false,note:null,compte_id:'k1'});
   t.transactions.push(
     sortie('t4','TEST QA Achat A&B',30,'c3'),
     sortie('t5','TEST QA Pain',20,'c4'),
@@ -155,10 +155,10 @@ test('historique des soldes : note en texte, la croix supprime ce solde seulemen
 
 test('sans caractère spécial, le rendu ne change pas',async({app})=>{
   await app.getByRole('button',{name:'Catégories',exact:true}).click();
-  await expect(app.locator('#cat-list .cat-name')).toHaveText(['TEST QA Courses','TEST QA Loisirs']);
-  await expect(app.locator('#cat-list .cat-emoji-display')).toHaveText(['🛒','🎮']);
-  expect(await textesOptions(app,'#f-cat')).toEqual(['Toutes catégories','🛒 TEST QA Courses','🎮 TEST QA Loisirs']);
-  expect(await textesOptions(app,'#modal-tx-cat')).toEqual(['Sans catégorie','🛒 TEST QA Courses','🎮 TEST QA Loisirs']);
+  await expect(app.locator('#cat-list .cat-name')).toHaveText(['TEST QA Courses','TEST QA Loisirs','TEST QA Virement interne']);
+  await expect(app.locator('#cat-list .cat-emoji-display')).toHaveText(['🛒','🎮','🔁']);
+  expect(await textesOptions(app,'#f-cat')).toEqual(['Toutes catégories','🛒 TEST QA Courses','🎮 TEST QA Loisirs','🔁 TEST QA Virement interne']);
+  expect(await textesOptions(app,'#modal-tx-cat')).toEqual(['Sans catégorie','🛒 TEST QA Courses','🎮 TEST QA Loisirs','🔁 TEST QA Virement interne']);
   await app.getByRole('button',{name:'Statistiques',exact:true}).click();
   await expect(app.locator('#stats-top5 .top5-name')).toHaveText(['🛒 TEST QA Courses']);
   // Plus aucun onclick construit dans ces écrans
