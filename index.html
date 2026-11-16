@@ -204,6 +204,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .badge-warn{background:rgba(245,158,11,0.15);color:#F59E0B;}
 .badge-ko{background:var(--red-soft);color:var(--red);}
 .badge-info{background:var(--accent-soft);color:var(--accent);}
+/* Indicateur « Mouvements de compte » en tête de la liste des transactions (#70) */
+.mvt-compte-indicateur{margin:-4px 0 14px;}
+.mvt-compte-indicateur .badge{display:inline-block;font-size:12px;padding:5px 10px;line-height:1.4;max-width:100%;}
 .btn-sm{padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;}
 .btn-sm:hover{border-color:var(--accent);color:var(--accent);}
 .btn-sm-danger:hover{border-color:var(--red);color:var(--red);}
@@ -512,6 +515,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <div class="card-title" style="margin-bottom:0;">Historique</div>
           <button class="btn-view-all" id="btn-view-all" onclick="toggleViewAll()">Tout voir</button>
         </div>
+        <div class="mvt-compte-indicateur" id="mvt-compte-indicateur" hidden></div>
         <div class="tx-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input class="tx-search-input" id="tx-search" placeholder="Rechercher une transaction..." oninput="renderTransactions()">
@@ -768,6 +772,42 @@ function messageMouvementCompteRetire(cat,apres){
   return nom+(apres?' n\'est plus':' ne sera plus')+' la catégorie Mouvement de compte.';
 }
 // ══ FIN FONCTIONS PURES MOUVEMENT DE COMPTE (#69) ═════
+
+// ══ DÉBUT FONCTIONS PURES INDICATEUR MOUVEMENTS DE COMPTE (#70) ══
+// Sans DOM ni Supabase : testables directement (tests/front/ticket70_indicateur_mouvements.test.js).
+// Utilisent categorieMouvementCompte (bloc #69). Chaque virement interne = une sortie + une entrée
+// dans la catégorie cochée : si les deux sont saisies avec le même montant, le total vaut 0.
+
+// Entrées − sorties de la catégorie « Mouvement de compte », calculé en centimes entiers.
+// mois : 'AAAA-MM' pour le mois affiché, null ou '' pour tout l'historique (« Tout voir »).
+// Ignore les filtres de la liste : on lui passe toutes les transactions.
+// Renvoie null si aucune catégorie n'est cochée (indicateur masqué), sinon un nombre (0 si équilibré).
+function totalMouvementsCompte(txs,listeCategories,mois){
+  const cat=categorieMouvementCompte(listeCategories);
+  if(!cat) return null;
+  let centimes=0;
+  (txs||[]).forEach(t=>{
+    if(!t||t.categorie_id===null||t.categorie_id===undefined||String(t.categorie_id)!==String(cat.id)) return;
+    if(mois&&!String(t.date||'').startsWith(mois)) return;
+    const m=Math.round(Number(t.montant)*100);
+    if(!Number.isFinite(m)) return;
+    if(t.type==='entrée') centimes+=m;
+    else if(t.type==='sortie') centimes-=m;
+  });
+  return centimes===0?0:centimes/100;
+}
+
+// Badge de l'indicateur à partir du total : null (masqué) si aucune catégorie cochée.
+// Vert « ✓ Mouvements de compte : 0,00 € » si équilibré, sinon rouge avec l'écart signé
+// (« ✗ Mouvements de compte : −150,00 € » / « +150,00 € »).
+function badgeMouvementsCompte(total){
+  if(total===null||total===undefined||!Number.isFinite(Number(total))) return null;
+  const centimes=Math.round(Number(total)*100);
+  if(centimes===0) return {ok:true,classe:'badge-ok',texte:'✓ Mouvements de compte : 0,00 €'};
+  const abs=(Math.abs(centimes)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return {ok:false,classe:'badge-ko',texte:'✗ Mouvements de compte : '+(centimes<0?'−':'+')+abs+' €'};
+}
+// ══ FIN FONCTIONS PURES INDICATEUR MOUVEMENTS DE COMPTE (#70) ══
 
 // ── DATE DU JOUR : FONCTION PURE (#45) ────────────────
 // Date au format AAAA-MM-JJ dans le fuseau du navigateur (et non en UTC comme toISOString,
@@ -1643,7 +1683,20 @@ function toggleViewAll(){
   btn.textContent=viewAllMonths?'Ce mois':'Tout voir';
   renderTransactions();
 }
+// Indicateur « Mouvements de compte » (#70) : mois affiché, ou tout l'historique en « Tout voir » ;
+// ignore les filtres. Masqué sans catégorie cochée ou si le chargement des transactions a échoué.
+function renderIndicateurMouvements(){
+  const el=document.getElementById('mvt-compte-indicateur');
+  if(!el) return;
+  const badge=erreurChargementTx?null:badgeMouvementsCompte(totalMouvementsCompte(transactions,categories,viewAllMonths?null:currentMonth));
+  if(!badge){el.hidden=true;el.innerHTML='';return;}
+  const cat=categorieMouvementCompte(categories);
+  const titre=`Entrées − sorties de la catégorie « ${cat.nom||''} » (${viewAllMonths?'tout l\'historique':'mois affiché'}). Doit valoir 0 : sinon, un virement est saisi à moitié ou avec un mauvais montant.`;
+  el.innerHTML=`<span class="badge ${badge.classe}" title="${esc(titre)}">${esc(badge.texte)}</span>`;
+  el.hidden=false;
+}
 function renderTransactions(){
+  renderIndicateurMouvements();
   const typeF=document.getElementById('f-type').value;
   const catF=document.getElementById('f-cat').value;
   const tcF=document.getElementById('f-tricount').value;
