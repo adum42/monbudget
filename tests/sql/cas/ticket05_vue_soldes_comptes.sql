@@ -167,7 +167,7 @@ select qa.cas('Transactions sans compte (socle) : aucun effet sur les soldes', '
 -- ───────── Sécurité et lecture seule ─────────
 -- Depuis #24, un solde de A sur le compte de B est refusé par le trigger soldes_verifier_compte :
 -- on le pose trigger désactivé (cas impossible via l'API) pour vérifier que la vue l'ignore toujours.
-select qa.cas('service_role : solde posé par A sur le compte de B (trigger #24 désactivé) ignoré par la vue', 'postgres', null,
+select qa.cas('Vue lue en service_role : solde de A posé sur le compte de B (inséré en postgres, trigger #24 désactivé) ignoré', 'postgres', null,
   $q$do $x$ declare r record; begin
      alter table public.soldes disable trigger soldes_verifier_compte;
      insert into public.soldes (user_id,compte_id,date,montant) values
