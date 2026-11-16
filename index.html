@@ -1171,6 +1171,35 @@ function messageErreurCompte(error,action){
     return 'Suppression impossible : '+String(error.message||error)+suffixe;
   return messageErreurSupabase(error);
 }
+
+// Opérations saisies depuis le dernier relevé du compte (#82).
+// ligne : ligne de v_soldes_comptes ; txs : transactions chargées (toutes, pas seulement le mois affiché).
+// Renvoie null (carte inchangée) si l'écart n'est pas calculable (aucun relevé, ou relevé antérieur
+// au solde initial : solde_calcule_a_date_banque vaut null) ou si aucune opération n'est datée après le relevé.
+// Sinon {nb, montant, texte} :
+//   - nb      = transactions du compte (compte_id, ou destination d'un mouvement tant que #69 n'est pas
+//               livré) datées strictement après le relevé et à partir du solde initial. Une opération
+//               du jour même du relevé n'est pas comptée : elle est incluse dans le relevé (règle de #5) ;
+//   - montant = solde_calcule − solde_calcule_a_date_banque, au centime (peut valoir 0) ;
+//   - texte   = « Depuis le relevé (N opération(s)) ».
+function opsDepuisReleve(ligne,txs){
+  if(!ligne||!ligne.date_dernier_solde_banque) return null;
+  const calcule=arrondiCentimes(ligne.solde_calcule);
+  const aDate=arrondiCentimes(ligne.solde_calcule_a_date_banque);
+  if(calcule===null||aDate===null) return null;
+  const releve=String(ligne.date_dernier_solde_banque).slice(0,10);
+  const debut=ligne.date_solde_initial?String(ligne.date_solde_initial).slice(0,10):'';
+  const id=ligne.compte_id;
+  const nb=(txs||[]).filter(t=>{
+    if(!t||!t.date) return false;
+    const d=String(t.date).slice(0,10);
+    const duCompte=t.compte_id===id||(t.type==='mouvement'&&t.compte_dest_id===id);
+    return duCompte&&d>releve&&d>=debut;
+  }).length;
+  if(!nb) return null;
+  const centimes=Math.round(calcule*100)-Math.round(aDate*100);
+  return {nb,montant:centimes===0?0:centimes/100,texte:`Depuis le relevé (${nb} opération${nb>1?'s':''})`};
+}
 // ══ FIN FONCTIONS PURES COMPTES (#8) ══════════════════
 
 // ══ DÉBUT FONCTIONS PURES SOLDES BANQUE (#55) ═════════
@@ -1683,6 +1712,9 @@ function renderComptes(){
     const ecartClasse=ecart===null?'':ecart===0?'pos':'neg';
     const ecartTexte=ecart===null?'—':(ecart>0?'+':'')+fmt(ecart)+' €';
     const plafond=arrondiCentimes(c.plafond);
+    const depuis=opsDepuisReleve(ligne,transactions);   // #82 : null -> carte inchangée
+    const libelleSolde=depuis?'Solde attendu en banque'
+      :'Solde calculé'+(c.date_solde_initial?' depuis le '+esc(formatDateFr(c.date_solde_initial)):'');
     return`<div class="compte-card" data-compte-id="${esc(c.id)}">
       <div class="compte-card-header" style="background:${esc(couleurCompte(c))}"></div>
       <div class="compte-card-body">
@@ -1694,10 +1726,11 @@ function renderComptes(){
           <span class="badge ${voyant.classe} compte-voyant" title="${esc(voyant.titre)}">${esc(voyant.texte)}</span>
         </div>
         <div class="compte-solde-actuel${calcule!==null&&calcule<0?' neg':''}" title="Solde calculé à partir du solde initial et des opérations">${calcule!==null?fmt(calcule)+' €':'— €'}</div>
-        <div class="compte-solde-date">Solde calculé${c.date_solde_initial?' depuis le '+esc(formatDateFr(c.date_solde_initial)):''}</div>
+        <div class="compte-solde-date">${libelleSolde}</div>
         <table class="compte-detail">
           <tr><td>Solde banque${dateBanque?' ('+esc(dateBanque)+')':''}</td><td class="num">${banque!==null?fmt(banque)+' €':'Aucun relevé'}</td></tr>
           <tr><td>Écart</td><td class="num ${ecartClasse}">${ecartTexte}</td></tr>
+          ${depuis?`<tr class="compte-depuis-releve"><td>${esc(depuis.texte)}</td><td class="num ${depuis.montant<0?'neg':'pos'}">${depuis.montant>0?'+':''}${fmt(depuis.montant)} €</td></tr>`:''}
           ${plafond!==null?`<tr><td>Plafond</td><td class="num">${fmt(plafond)} €</td></tr>`:''}
         </table>
         ${evol!==null?`<div class="compte-evolution" style="color:${evol>=0?'var(--green)':'var(--red)'}">
