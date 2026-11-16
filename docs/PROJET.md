@@ -30,7 +30,7 @@ Chaque étape correspond à un **milestone GitHub** du même nom. Un milestone p
 
 **Sprint 1** : prévu du 29/10/2026 au 11/11/2026 ; **clos en avance le 05/11/2026**, tous ses tickets livrés. Tickets du sprint : label `sprint-1`.
 
-**Sprint 2** : du **06/11/2026 au 19/11/2026 inclus** (jusqu'au 20/11 à 00h00, heure de Paris). Objectif : **terminer l'étape 1 et la valider en prod**. Tickets du sprint : label `sprint-2` (16 tickets, ordre ci-dessous dans « Backlog du 05/11 »). En cas de débordement, on sort dans l'ordre #78, #56, #54.
+**Sprint 2** : prévu du 06/11 au 19/11/2026 ; **démarré le 16/11/2026, prolongé jusqu'au 20/11/2026 inclus** (jusqu'au 21/11 à 00h00, heure de Paris). Objectif : **terminer l'étape 1 et la valider en prod**. Tickets du sprint : label `sprint-2` (16 tickets, ordre ci-dessous dans « Backlog du 05/11 »). En cas de débordement, on sort dans l'ordre #78, #56, #54.
 
 Ordre de traitement du sprint 1 (mis à jour le 04/11/2026 ; livrés : #2, #3, #4, #5, #6, #8, #9, #17, #18, #19, #20, #21, #22, #25, #30, #43, #44, #45, #49, #55) :
 
@@ -275,6 +275,7 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 | 05/11/2026 | Lignes de la liste des transactions allégées : plus de badge « Entrée » / « Sortie » (le montant signé et coloré suffit), plus de mention « Hors Tricount » (#74) ; pastille ● à la couleur du compte à la place du 🏦 (#76, option A préférée au liseré) | liste plus lisible |
 | 05/11/2026 | Catégories : on reste sur les emojis (pas d'icônes au trait), catalogue élargi, recherche par mots-clés, saisie libre d'un seul emoji (#78) | pas de migration, gain sans refonte |
 | 05/11/2026 | Sprint 1 clos en avance (tous ses tickets livrés) ; **sprint 2 du 06/11 au 19/11 inclus**, objectif terminer et valider l'étape 1 : 16 tickets (#10, #24, #54, #56, #58, #68 à #74, #76 à #78, #80) ; #71 et #56 rattachés au jalon Étape 1 | rythme de deux semaines conservé ; la vitesse du sprint 1 (20 tickets) et la majorité de tickets S le permettent, le goulot étant les migrations et recettes du chef de projet |
+| 16/11/2026 | Sprint 2 démarré le 16/11 (au lieu du 06/11) et prolongé jusqu'au **20/11/2026 inclus** ; périmètre et ordre de sortie en cas de débordement (#78, #56, #54) inchangés | décision du chef de projet : le sprint commence seulement aujourd'hui |
 
 Décisions en attente : voir les tickets labellisés `decision`.
 
