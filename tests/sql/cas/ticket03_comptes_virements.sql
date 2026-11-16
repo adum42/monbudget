@@ -149,11 +149,11 @@ select qa.cas('A ne peut pas supprimer le compte de B (0 ligne, RLS)', 'authenti
 select qa.cas('Suppression du user A (cascade) malgré les FK restrict', 'postgres', null,
   $q$do $x$ begin delete from auth.users where id='aaaaaaaa-0000-0000-0000-000000000001'; raise exception using errcode='QA001', message='rollback volontaire'; end $x$ $q$, 'QA001');
 
--- ───────── Écarts connus, hors périmètre de #3 (suivis par le ticket #24) ─────────
--- Ces cas décrivent le comportement ACTUEL. Quand #24 sera livré, leur attendu passera à '23503'.
-select qa.cas('ÉCART #24 : A pose un solde sur le compte de B (accepté aujourd''hui)', 'authenticated', :A,
-  $q$insert into public.soldes (user_id,compte_id,date,montant) values ('aaaaaaaa-0000-0000-0000-000000000001','40000000-0000-0000-0000-00000000000b','2026-10-20',1)$q$);
+-- ───────── Écarts relevés par la recette de #3, corrigés par #24 ─────────
+-- Détail des cas de #24 : cas/ticket24_controle_appartenance.sql.
+select qa.cas('#24 : A pose un solde sur le compte de B : refusé', 'authenticated', :A,
+  $q$insert into public.soldes (user_id,compte_id,date,montant) values ('aaaaaaaa-0000-0000-0000-000000000001','40000000-0000-0000-0000-00000000000b','2026-10-20',1)$q$, '23503');
 select qa.cas('Préparation : B crée une catégorie', 'authenticated', :B,
   $q$insert into public.categories (id,user_id,nom) values ('c0000000-0000-0000-0000-00000000000b','bbbbbbbb-0000-0000-0000-000000000002','Cat B')$q$);
-select qa.cas('ÉCART #24 : tx de A avec la catégorie de B (acceptée aujourd''hui)', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,categorie_id) values ('aaaaaaaa-0000-0000-0000-000000000001','x',1,'sortie','2026-10-01','c0000000-0000-0000-0000-00000000000b')$q$);
+select qa.cas('#24 : tx de A avec la catégorie de B : refusée', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,categorie_id) values ('aaaaaaaa-0000-0000-0000-000000000001','x',1,'sortie','2026-10-01','c0000000-0000-0000-0000-00000000000b')$q$, '23503');
