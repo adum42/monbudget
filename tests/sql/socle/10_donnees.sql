@@ -16,6 +16,12 @@ insert into auth.users (id, email) values
 insert into public.categories (id, user_id, nom) values
   ('c0000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'Courses');
 
+-- « Virement interne » (#68) : la migration doit la cocher « Mouvement de compte » et la passer en
+-- `les deux`. Chez A elle est créée en `sortie` ; chez B le nom a une autre casse et des espaces.
+insert into public.categories (id, user_id, nom, type) values
+  ('c0000000-0000-0000-0000-0000000000a8', 'aaaaaaaa-0000-0000-0000-000000000001', 'Virement interne',     'sortie'),
+  ('c0000000-0000-0000-0000-0000000000b8', 'bbbbbbbb-0000-0000-0000-000000000002', ' virement INTERNE ',   'les deux');
+
 insert into public.comptes (id, user_id, nom, type) values
   ('10000000-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-000000000001', 'Livret A',  'livret'),
   ('20000000-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-000000000001', 'Livret DD', 'livret'),

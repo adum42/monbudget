@@ -34,11 +34,13 @@ select qa.cas('Préparation : comptes Courant #5 (100 au 01/10) et Livret #5 (0 
   $q$insert into public.comptes (id,user_id,nom,type,solde_initial,date_solde_initial) values
      ('e1000000-0000-0000-0000-00000000000a','aaaaaaaa-0000-0000-0000-000000000001','Courant #5','courant',100,'2026-10-01'),
      ('e2000000-0000-0000-0000-00000000000a','aaaaaaaa-0000-0000-0000-000000000001','Livret #5','livret',0,'2026-10-01')$q$);
-select qa.cas('Préparation : +50, −30, mouvement de 20 vers le livret', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id) values
-     ('aaaaaaaa-0000-0000-0000-000000000001','#5 entrée',50,'entrée','2026-10-02','e1000000-0000-0000-0000-00000000000a',null),
-     ('aaaaaaaa-0000-0000-0000-000000000001','#5 sortie',30,'sortie','2026-10-05','e1000000-0000-0000-0000-00000000000a',null),
-     ('aaaaaaaa-0000-0000-0000-000000000001','#5 virement',20,'mouvement','2026-10-10','e1000000-0000-0000-0000-00000000000a','e2000000-0000-0000-0000-00000000000a')$q$);
+-- Depuis #68, un virement interne = une sortie sur le compte de départ + une entrée sur le compte d'arrivée.
+select qa.cas('Préparation : +50, −30, virement de 20 vers le livret (sortie + entrée)', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id) values
+     ('aaaaaaaa-0000-0000-0000-000000000001','#5 entrée',50,'entrée','2026-10-02','e1000000-0000-0000-0000-00000000000a'),
+     ('aaaaaaaa-0000-0000-0000-000000000001','#5 sortie',30,'sortie','2026-10-05','e1000000-0000-0000-0000-00000000000a'),
+     ('aaaaaaaa-0000-0000-0000-000000000001','#5 virement',20,'sortie','2026-10-10','e1000000-0000-0000-0000-00000000000a'),
+     ('aaaaaaaa-0000-0000-0000-000000000001','#5 virement',20,'entrée','2026-10-10','e2000000-0000-0000-0000-00000000000a')$q$);
 
 -- ───────── Critères d'acceptation du ticket ─────────
 select qa.cas('CA1 compte source : solde calculé = 100', 'authenticated', :A,
@@ -142,8 +144,8 @@ select qa.cas('Sans date_solde_initial : toutes les transactions comptent (Livre
      select solde_calcule into v from public.v_soldes_comptes where compte_id='10000000-0000-0000-0000-00000000000a';
      if v is distinct from 12 then raise exception 'solde_calcule = %', v; end if; end $x$ $q$);
 
--- ───────── Mouvements ─────────
-select qa.cas('Mouvement modifié (20 → 25) : source et destination suivent', 'authenticated', :A,
+-- ───────── Virements internes (sortie + entrée, #68) ─────────
+select qa.cas('Virement modifié (20 → 25 sur les deux opérations) : départ et arrivée suivent', 'authenticated', :A,
   $q$do $x$ declare s numeric; d numeric; begin
      update public.transactions set montant = 25 where description = '#5 virement';
      select solde_calcule into s from public.v_soldes_comptes where compte_id='e1000000-0000-0000-0000-00000000000a';
@@ -152,8 +154,9 @@ select qa.cas('Mouvement modifié (20 → 25) : source et destination suivent', 
 select qa.cas('Somme des soldes calculés inchangée par un virement interne', 'authenticated', :A,
   $q$do $x$ declare avant numeric; apres numeric; begin
      select sum(solde_calcule) into avant from public.v_soldes_comptes;
-     insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id) values
-       ('aaaaaaaa-0000-0000-0000-000000000001','#5 virement 2',33.33,'mouvement','2026-10-25','e2000000-0000-0000-0000-00000000000a','e1000000-0000-0000-0000-00000000000a');
+     insert into public.transactions (user_id,description,montant,type,date,compte_id) values
+       ('aaaaaaaa-0000-0000-0000-000000000001','#5 virement 2',33.33,'sortie','2026-10-25','e2000000-0000-0000-0000-00000000000a'),
+       ('aaaaaaaa-0000-0000-0000-000000000001','#5 virement 2',33.33,'entrée','2026-10-25','e1000000-0000-0000-0000-00000000000a');
      select sum(solde_calcule) into apres from public.v_soldes_comptes;
      if avant is distinct from apres then raise exception 'avant=% après=%', avant, apres; end if; end $x$ $q$);
 select qa.cas('Transactions sans compte (socle) : aucun effet sur les soldes', 'authenticated', :A,
