@@ -34,13 +34,12 @@ select qa.cas('transactions.type : entrée et sortie seulement', 'postgres', nul
      if (select pg_get_constraintdef(oid) from pg_constraint where conname='transactions_type_check')
         is distinct from $d$CHECK ((type = ANY (ARRAY['entrée'::text, 'sortie'::text])))$d$
        then raise exception 'contrainte de type inattendue'; end if; end $x$ $q$);
-select qa.cas('compte_dest_id conservée (décision du 16/11) et forcée à null', 'postgres', null,
+select qa.cas('compte_dest_id conservée par #68 puis supprimée par #86 : colonne et contrainte absentes', 'postgres', null,
   $q$do $x$ begin
-     if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='transactions' and column_name='compte_dest_id')
-       then raise exception 'colonne supprimée trop tôt (le front actuel l''envoie)'; end if;
-     if (select pg_get_constraintdef(oid) from pg_constraint where conname='transactions_compte_dest_id_vide_check')
-        is distinct from 'CHECK ((compte_dest_id IS NULL))'
-       then raise exception 'contrainte compte_dest_id vide absente'; end if; end $x$ $q$);
+     if exists (select 1 from information_schema.columns where table_schema='public' and table_name='transactions' and column_name='compte_dest_id')
+       then raise exception 'colonne compte_dest_id encore présente'; end if;
+     if exists (select 1 from pg_constraint where conname='transactions_compte_dest_id_vide_check')
+       then raise exception 'contrainte compte_dest_id vide encore présente'; end if; end $x$ $q$);
 select qa.cas('v_soldes_comptes toujours en security_invoker', 'postgres', null,
   $q$do $x$ begin
      if not exists (select 1 from pg_class where oid = 'public.v_soldes_comptes'::regclass
@@ -92,15 +91,9 @@ select qa.cas('L''unicité est par utilisateur : A et B ont chacun la leur', 'po
 select qa.cas('CA3 insérer un mouvement : refusé', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
      values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-11-02','10000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('CA3 insérer un mouvement avec les deux comptes : refusé', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-11-02','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('Sortie avec compte_dest_id renseigné : refusée', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'sortie','2026-11-02','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('Ligne envoyée par le front actuel (compte_dest_id null) : acceptée', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id,categorie_id,tricount,epingle,note)
-     values ('aaaaaaaa-0000-0000-0000-000000000001','Front actuel #68',4.2,'sortie','2026-11-02','10000000-0000-0000-0000-00000000000a',null,'c0000000-0000-0000-0000-000000000001','non',true,null)$q$);
+select qa.cas('Ligne envoyée par le front (construireLigneTx depuis #69) : acceptée', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,categorie_id,tricount,epingle,note)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','Front actuel #68',4.2,'sortie','2026-11-02','10000000-0000-0000-0000-00000000000a','c0000000-0000-0000-0000-000000000001','non',true,null)$q$);
 
 -- ───────── CA4 : un virement = une sortie + une entrée ─────────
 select qa.cas('Préparation : comptes Départ #68 (1000 au 01/11) et Arrivée #68 (0 au 01/11)', 'authenticated', :A,

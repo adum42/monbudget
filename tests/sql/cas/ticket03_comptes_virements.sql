@@ -19,41 +19,28 @@ select qa.cas('Type especes accepté', 'authenticated', :A,
   $q$insert into public.comptes (user_id,nom,type) values ('aaaaaaaa-0000-0000-0000-000000000001','Portefeuille','especes')$q$);
 select qa.cas('Type inconnu refusé', 'authenticated', :A,
   $q$insert into public.comptes (user_id,nom,type) values ('aaaaaaaa-0000-0000-0000-000000000001','X','pea')$q$, '23514');
-select qa.cas('CA3 mouvement compte_id = compte_dest_id refusé (type mouvement interdit depuis #68)', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','virement',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a','10000000-0000-0000-0000-00000000000a')$q$, '23514');
+select qa.cas('CA3 type « mouvement » refusé (abandonné en #68)', 'authenticated', :A,
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
+    values ('aaaaaaaa-0000-0000-0000-000000000001','virement',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a')$q$, '23514');
 select qa.cas('CA4 colonne direction absente', 'postgres', null,
   $q$do $x$ begin if exists (select 1 from information_schema.columns where table_schema='public' and table_name='transactions' and column_name='direction')
     then raise exception 'direction existe'; end if; end $x$ $q$);
 
--- ───────── Mouvements (type abandonné en #68 : tout mouvement est refusé) ─────────
-select qa.cas('Mouvement Livret A -> Livret DD refusé depuis #68', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','x',100,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$, '23514');
+-- ───────── Type mouvement abandonné (#68) ─────────
+-- Les anciens cas sur le compte de destination d'un mouvement ne testaient plus ce que disait leur nom
+-- depuis #68 : supprimés par #86, qui retire la colonne (voir le fichier de tests de #86).
 select qa.cas('Préparation : sortie « mvt-ok » sur Livret A', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
     values ('aaaaaaaa-0000-0000-0000-000000000001','mvt-ok',100,'sortie','2026-10-01','10000000-0000-0000-0000-00000000000a')$q$);
-select qa.cas('Mouvement sans compte_dest_id refusé', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('Mouvement sans compte_id refusé', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_dest_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('Sortie avec compte_dest_id refusée', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'sortie','2026-10-01','10000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-00000000000a')$q$, '23514');
 select qa.cas('Sortie modifiée en mouvement : refusé', 'authenticated', :A,
-  $q$update public.transactions set type='mouvement', compte_dest_id='20000000-0000-0000-0000-00000000000a' where description='mvt-ok'$q$, '23514');
-select qa.cas('Sortie modifiée en entrée avec compte_dest_id=null (envoyé par le front actuel) : accepté', 'authenticated', :A,
-  $q$update public.transactions set type='entrée', compte_dest_id=null where description='mvt-ok'$q$);
+  $q$update public.transactions set type='mouvement' where description='mvt-ok'$q$, '23514');
+select qa.cas('Sortie modifiée en entrée : acceptée', 'authenticated', :A,
+  $q$update public.transactions set type='entrée' where description='mvt-ok'$q$);
 
 -- ───────── Appartenance des comptes (trigger transactions_verifier_comptes) ─────────
 select qa.cas('A rattache une sortie au compte de B : refusé', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'sortie','2026-10-01','40000000-0000-0000-0000-00000000000b')$q$, '23503');
-select qa.cas('A vire vers le compte de B : refusé', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id)
-    values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-10-01','10000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-00000000000b')$q$, '23503');
 select qa.cas('Compte inexistant : refusé (23503)', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
     values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'sortie','2026-10-01',gen_random_uuid())$q$, '23503');
