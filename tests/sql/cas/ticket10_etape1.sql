@@ -15,6 +15,8 @@
 -- « Virement interne » de A (c0…a8) est cochée « Mouvement de compte » par la migration #68.
 -- Comptes créés ici (A) : f1… « Courant #10 » (1 000 au 31/10/2026), f2… « Livret #10 » (200 au 31/10/2026).
 -- Le relevé est daté du jour (current_date) : nb_jours_depuis_releve = 0, comme une saisie du jour.
+-- Les autres dates sont fixes (31/10 et 02/11/2026) : le scénario suppose current_date postérieur
+-- au 02/11/2026, ce qui est le cas depuis l'écriture de ces cas (17/11/2026).
 -- Attention : les cas qui réussissent modifient la base pour les cas suivants (l'ordre compte).
 
 \set A '''aaaaaaaa-0000-0000-0000-000000000001'''

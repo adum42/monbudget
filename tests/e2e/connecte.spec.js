@@ -208,8 +208,12 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
     const reste=await app.evaluate(async ({comptesQA,operationsQA})=>{
       if(typeof sb==='undefined'||!currentUser) return null;
       // Filtre exact (eq) sur les libellés de CETTE exécution : rien d'autre n'est touché.
-      for(const d of operationsQA) await sb.from('transactions').delete().eq('description',d);
-      for(const nom of comptesQA) await sb.from('comptes').delete().eq('nom',nom);
+      // Une erreur de suppression (ex. 23503 si une opération reste attachée au compte) est remontée
+      // telle quelle, pour que le message d'échec dise pourquoi.
+      const erreurs=[];
+      for(const d of operationsQA){const {error}=await sb.from('transactions').delete().eq('description',d);if(error) erreurs.push(error.code+' '+error.message);}
+      for(const nom of comptesQA){const {error}=await sb.from('comptes').delete().eq('nom',nom);if(error) erreurs.push(error.code+' '+error.message);}
+      if(erreurs.length) throw new Error('suppression des données TEST QA impossible : '+erreurs.join(' ; '));
       let total=0;
       for(const [table,col,valeurs] of [['transactions','description',operationsQA],['comptes','nom',comptesQA]]){
         for(const v of valeurs){
@@ -227,14 +231,19 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
     test.setTimeout(90_000);
     await seConnecter(app);
     const hier=veilleParis();
+    const jour=aujourdhuiParis();   // calculé une fois : les deux moitiés du virement ont la même date, même passé minuit
     const carte=nom=>app.locator('.compte-card',{hasText:nom});
     const onglet=nom=>app.getByRole('button',{name:nom,exact:true}).click();
     const euros=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-    const lireNombre=async sel=>Number((await app.locator(sel).innerText()).replace(/[^\d,-]/g,'').replace(',','.'));
+    // Patrimoine calculé par l'app (somme des soldes calculés, #8) ; null si le chargement des comptes a échoué.
+    const patrimoine=()=>app.evaluate(()=>erreurChargementComptes?null:totalPatrimoine(soldesComptes));
 
     // ── 1. Créer le compte courant par l'écran ──────────────────────────────
     await onglet('Comptes');
-    const patrimoineDepart=await lireNombre('#patrimoine-total');
+    // seConnecter attend les comptes, pas la fin du rendu : on attend que l'écran affiche le patrimoine calculé.
+    const patrimoineDepart=await patrimoine();
+    expect(patrimoineDepart,'chargement des comptes en erreur').not.toBeNull();
+    await expect(app.locator('#patrimoine-total')).toHaveText(euros(patrimoineDepart));
     await app.getByRole('button',{name:'+ Nouveau compte'}).click();
     await expect(app.locator('#modal-c-nom')).toBeFocused();
     await expect(app.locator('#modal-c-type')).toHaveValue('courant');
@@ -280,7 +289,7 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
     await app.click('#solde-modal-save');
     await expect(app.locator('#solde-history-list')).toContainText('957,50');
     await expect(app.locator('#solde-modal-error')).toBeHidden();
-    await app.click('#solde-modal .modal-footer .btn-cancel');
+    await app.locator('#solde-modal-footer').getByRole('button',{name:'Fermer'}).click();
     await expect(app.locator('#solde-modal')).not.toHaveClass(/open/);
     await expect(carte(courant).locator('.compte-voyant')).toHaveText('✓ rapproché');
     await expect(carte(courant).locator('.compte-voyant')).toHaveClass(/badge-ok/);
@@ -298,9 +307,9 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
     const indicateur=app.locator('#mvt-compte-indicateur');
     const indicateurAvant=await indicateur.innerText();
     const metriquesAvant=await app.locator('#metrics').innerText();
-    await saisir('sortie',{desc:virement,montant:'100',date:aujourdhuiParis(),compte:courant,categorie:categorieMvt});
+    await saisir('sortie',{desc:virement,montant:'100',date:jour,compte:courant,categorie:categorieMvt});
     await expect(indicateur).not.toHaveText(indicateurAvant);              // virement à moitié : l'écart se voit
-    await saisir('entrée',{desc:virement,montant:'100',date:aujourdhuiParis(),compte:livret,categorie:categorieMvt});
+    await saisir('entrée',{desc:virement,montant:'100',date:jour,compte:livret,categorie:categorieMvt});
     await expect(indicateur).toHaveText(indicateurAvant);                  // les deux moitiés s'annulent
     expect(await app.locator('#metrics').innerText()).toBe(metriquesAvant); // exclu des métriques du mois
 
@@ -310,6 +319,8 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
     await expect(carte(courant).locator('.compte-voyant')).toHaveText('✓ rapproché');
     await expect(carte(courant).locator('.compte-depuis-releve')).toContainText('Depuis le relevé (1 opération)');
     // Patrimoine = départ + 1 000 + 200 − 42,50 : le virement ne le change pas.
-    expect(Math.round(await lireNombre('#patrimoine-total')*100)).toBe(Math.round((patrimoineDepart+1157.50)*100));
+    const attendu=Math.round((patrimoineDepart+1157.50)*100)/100;
+    await expect.poll(patrimoine).toBe(attendu);
+    await expect(app.locator('#patrimoine-total')).toHaveText(euros(attendu));
   });
 });

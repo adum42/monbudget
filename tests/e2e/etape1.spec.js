@@ -74,8 +74,9 @@ test('étape 1 : compte courant, dépense, relevé égal (carte verte), virement
   await app.fill('#modal-solde-montant','957.50');
   await app.fill('#modal-solde-date','2026-11-03');
   await app.click('#solde-modal-save');
+  await expect(app.locator('#solde-history-list')).toContainText('957,50');   // relevé enregistré et rechargé
   await expect(app.locator('#solde-modal-error')).toBeHidden();
-  await app.click('#solde-modal .modal-footer .btn-cancel');
+  await app.locator('#solde-modal-footer').getByRole('button',{name:'Fermer'}).click();
   await expect(app.locator('#solde-modal')).not.toHaveClass(/open/);
 
   const voyant=carte(app,NOUVEAU).locator('.compte-voyant');
