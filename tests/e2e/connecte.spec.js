@@ -15,6 +15,11 @@ const MOT_DE_PASSE=process.env.TEST_PASSWORD;
 
 test.skip(!EMAIL||!MOT_DE_PASSE,'TEST_EMAIL / TEST_PASSWORD absents : tests connectés ignorés');
 
+// Les tests de ce fichier partagent le même utilisateur de test : ils s'exécutent l'un après l'autre
+// (sinon l'opération créée par l'un change le patrimoine et les métriques lus par l'autre, vu en CI
+// sur #10). Mode « default » : dans l'ordre, sans sauter les suivants si l'un échoue.
+test.describe.configure({mode:'default'});
+
 test.use({
   baseReelle:true,
   avecSession:false,
@@ -235,8 +240,10 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
     const carte=nom=>app.locator('.compte-card',{hasText:nom});
     const onglet=nom=>app.getByRole('button',{name:nom,exact:true}).click();
     const euros=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-    // Patrimoine calculé par l'app (somme des soldes calculés, #8) ; null si le chargement des comptes a échoué.
+    // Patrimoine affiché = somme des soldes calculés (#8), recalculé par la page ; null si le chargement a échoué.
     const patrimoine=()=>app.evaluate(()=>erreurChargementComptes?null:totalPatrimoine(soldesComptes));
+    // Somme des soldes calculés de NOS deux comptes seulement : indépendante des autres données de l'utilisateur.
+    const sommeQA=()=>app.evaluate(noms=>totalPatrimoine(soldesComptes.filter(l=>comptes.some(c=>c.id===l.compte_id&&noms.includes(c.nom)))),[courant,livret]);
 
     // ── 1. Créer le compte courant par l'écran ──────────────────────────────
     await onglet('Comptes');
@@ -300,27 +307,32 @@ test.describe('étape 1 avec des données TEST QA (#10)',()=>{
       return data;
     },courant)).toEqual([{solde_calcule:957.5,ecart:0}]);
 
+    await expect.poll(sommeQA).toBe(1157.5);   // avant le virement : 957,50 + 200
+
     // ── 4. Virement interne de 100 € en deux opérations, aujourd'hui ─────────
     const categorieMvt=await app.evaluate(()=>{const c=categories.find(x=>x.mouvement_compte===true);return c?String(c.id):null;});
     expect(categorieMvt,'l\'utilisateur de test n\'a pas de catégorie « Mouvement de compte »').toBeTruthy();
     await onglet('Transactions');
     const indicateur=app.locator('#mvt-compte-indicateur');
     const indicateurAvant=await indicateur.innerText();
-    const metriquesAvant=await app.locator('#metrics').innerText();
     await saisir('sortie',{desc:virement,montant:'100',date:jour,compte:courant,categorie:categorieMvt});
     await expect(indicateur).not.toHaveText(indicateurAvant);              // virement à moitié : l'écart se voit
     await saisir('entrée',{desc:virement,montant:'100',date:jour,compte:livret,categorie:categorieMvt});
     await expect(indicateur).toHaveText(indicateurAvant);                  // les deux moitiés s'annulent
-    expect(await app.locator('#metrics').innerText()).toBe(metriquesAvant); // exclu des métriques du mois
+    // Exclu des métriques et des statistiques : nos deux opérations sont chargées, mais txPourStats les écarte.
+    expect(await app.evaluate(d=>{
+      const nos=transactions.filter(t=>t.description===d);
+      return [nos.length,txPourStats(nos,categories).length];
+    },virement)).toEqual([2,0]);
 
     await onglet('Comptes');
     await expect(carte(courant).locator('.compte-solde-actuel')).toHaveText(euros(857.50));
     await expect(carte(livret).locator('.compte-solde-actuel')).toHaveText(euros(300));
     await expect(carte(courant).locator('.compte-voyant')).toHaveText('✓ rapproché');
     await expect(carte(courant).locator('.compte-depuis-releve')).toContainText('Depuis le relevé (1 opération)');
-    // Patrimoine = départ + 1 000 + 200 − 42,50 : le virement ne le change pas.
-    const attendu=Math.round((patrimoineDepart+1157.50)*100)/100;
-    await expect.poll(patrimoine).toBe(attendu);
-    await expect(app.locator('#patrimoine-total')).toHaveText(euros(attendu));
+    // Le virement ne change pas le patrimoine : nos deux comptes valent toujours 957,50 + 200 = 1 157,50.
+    await expect.poll(sommeQA).toBe(1157.5);
+    // Le patrimoine affiché est bien la somme des soldes calculés (toutes données confondues).
+    await expect(app.locator('#patrimoine-total')).toHaveText(euros(await patrimoine()));
   });
 });
