@@ -91,7 +91,7 @@ select qa.cas('L''unicité est par utilisateur : A et B ont chacun la leur', 'po
 select qa.cas('CA3 insérer un mouvement : refusé', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id)
      values ('aaaaaaaa-0000-0000-0000-000000000001','x',10,'mouvement','2026-11-02','10000000-0000-0000-0000-00000000000a')$q$, '23514');
-select qa.cas('Ligne envoyée par le front (construireLigneTx, sans compte_dest_id depuis #69) : acceptée', 'authenticated', :A,
+select qa.cas('Ligne envoyée par le front (construireLigneTx depuis #69) : acceptée', 'authenticated', :A,
   $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,categorie_id,tricount,epingle,note)
      values ('aaaaaaaa-0000-0000-0000-000000000001','Front actuel #68',4.2,'sortie','2026-11-02','10000000-0000-0000-0000-00000000000a','c0000000-0000-0000-0000-000000000001','non',true,null)$q$);
 

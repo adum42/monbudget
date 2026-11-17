@@ -5,7 +5,7 @@
 -- Utilisateurs : A = aaaaaaaa-…-01 (comptes 10…0a Livret A, 20…0a Livret DD, 30…0a Bitcoin),
 --                B = bbbbbbbb-…-02 (compte 40…0b Livret B). Voir tests/sql/socle/10_donnees.sql.
 -- Le garde-fou (migration interrompue si une transaction a compte_dest_id renseignée) se teste hors de
--- ce fichier, sur une base où la migration n'est pas encore passée : voir la PR.
+-- ce fichier, sur une base où la migration n'est pas encore passée : voir le ticket #86.
 -- Attention : les cas qui réussissent modifient la base pour les cas suivants (l'ordre compte).
 
 \set A '''aaaaaaaa-0000-0000-0000-000000000001'''
