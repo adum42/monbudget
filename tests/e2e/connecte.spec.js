@@ -48,6 +48,13 @@ function aujourdhuiParis(){
   return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Paris'}).format(new Date());
 }
 
+// Veille de la date du jour à Paris, au format AAAA-MM-JJ.
+function veilleParis(){
+  const [a,m,j]=aujourdhuiParis().split('-').map(Number);
+  const d=new Date(Date.UTC(a,m-1,j-1));
+  return d.toISOString().slice(0,10);
+}
+
 test('connexion de l\'utilisateur de test',async({app})=>{
   await seConnecter(app);
   // Comparaison sans afficher l'adresse dans le message d'échec (Supabase la met en minuscules).
@@ -171,5 +178,138 @@ test.describe('avec des données TEST QA',()=>{
     await expect(libelle).toHaveText(nomMois(m===1?a-1:a,m===1?12:m-1));
     await app.click('#btn-next-month');
     await expect(libelle).toHaveText(nomMois(a,m));
+  });
+});
+
+// ── Étape 1 sur la vraie base (#10) ─────────────────────────────────────────
+// Scénario du ticket #10 : créer un compte courant, saisir une dépense, saisir un solde banque égal
+// (la carte passe au vert), puis un virement interne en deux opérations (les deux soldes bougent,
+// l'indicateur « Mouvements de compte » revient à sa valeur d'avant).
+// Données créées : deux comptes « TEST QA e2e … » (le second, un livret, reçoit l'entrée du virement,
+// pour ne toucher à aucun compte du jeu de données de #21), une dépense, deux opérations de virement
+// et un relevé. La catégorie cochée « Mouvement de compte » de l'utilisateur de test est utilisée
+// telle quelle, jamais modifiée. Tout est supprimé dans l'afterEach, même en cas d'échec :
+// opérations d'abord (un compte qui porte des opérations ne se supprime pas), puis comptes
+// (leurs relevés partent en cascade).
+// Dates : la veille (à Paris) pour le solde initial, la dépense et le relevé, le jour même pour le
+// virement : il tombe après le relevé, la carte reste donc verte (« Depuis le relevé »).
+test.describe('étape 1 avec des données TEST QA (#10)',()=>{
+  let prefixe,courant,livret,depense,virement;
+
+  test.beforeEach(async({},testInfo)=>{
+    prefixe=`TEST QA e2e ${process.env.GITHUB_RUN_ID||'local'} ${testInfo.project.name} ${Date.now()}`;
+    courant=`${prefixe} courant`;
+    livret=`${prefixe} livret`;
+    depense=`${prefixe} dépense`;
+    virement=`${prefixe} virement`;
+  });
+
+  test.afterEach(async({app})=>{
+    const reste=await app.evaluate(async ({comptesQA,operationsQA})=>{
+      if(typeof sb==='undefined'||!currentUser) return null;
+      // Filtre exact (eq) sur les libellés de CETTE exécution : rien d'autre n'est touché.
+      for(const d of operationsQA) await sb.from('transactions').delete().eq('description',d);
+      for(const nom of comptesQA) await sb.from('comptes').delete().eq('nom',nom);
+      let total=0;
+      for(const [table,col,valeurs] of [['transactions','description',operationsQA],['comptes','nom',comptesQA]]){
+        for(const v of valeurs){
+          const {count,error}=await sb.from(table).select('id',{count:'exact',head:true}).eq(col,v);
+          if(error) throw new Error('comptage des données TEST QA impossible : '+error.message);
+          total+=count;
+        }
+      }
+      return total;
+    },{comptesQA:[courant,livret],operationsQA:[depense,virement]});
+    if(reste!==null) expect(reste,'données TEST QA restées en base').toBe(0);
+  });
+
+  test('compte courant, dépense, relevé égal (carte verte), virement en deux opérations',async({app})=>{
+    test.setTimeout(90_000);
+    await seConnecter(app);
+    const hier=veilleParis();
+    const carte=nom=>app.locator('.compte-card',{hasText:nom});
+    const onglet=nom=>app.getByRole('button',{name:nom,exact:true}).click();
+    const euros=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const lireNombre=async sel=>Number((await app.locator(sel).innerText()).replace(/[^\d,-]/g,'').replace(',','.'));
+
+    // ── 1. Créer le compte courant par l'écran ──────────────────────────────
+    await onglet('Comptes');
+    const patrimoineDepart=await lireNombre('#patrimoine-total');
+    await app.getByRole('button',{name:'+ Nouveau compte'}).click();
+    await expect(app.locator('#modal-c-nom')).toBeFocused();
+    await expect(app.locator('#modal-c-type')).toHaveValue('courant');
+    await app.locator('#modal-c-par-defaut').uncheck();       // le compte par défaut du jeu #21 ne change pas
+    await app.fill('#modal-c-nom',courant);
+    await app.fill('#modal-c-solde-initial','1000');
+    await app.fill('#modal-c-date-solde-initial',hier);
+    await app.click('#compte-modal-save');
+    await expect(app.locator('#compte-modal')).not.toHaveClass(/open/);
+    await expect(carte(courant).locator('.compte-solde-actuel')).toHaveText(euros(1000));
+    await expect(carte(courant).locator('.compte-voyant')).toHaveText('Aucun relevé');
+
+    // Le livret qui recevra le virement : créé directement par le client de la page (même RLS).
+    const {error:errLivret}=await app.evaluate(async ([nom,date])=>await sb.from('comptes').insert([
+      {user_id:currentUser.id,nom,type:'livret',solde_initial:200,date_solde_initial:date,par_defaut:false}]),[livret,hier]);
+    expect(errLivret,'création du livret TEST QA').toBeNull();
+    await app.evaluate(async()=>{await rechargerComptes();});   // comme l'app après un enregistrement
+    await expect(carte(livret).locator('.compte-solde-actuel')).toHaveText(euros(200));
+
+    // ── 2. Dépense de 42,50 € la veille ──────────────────────────────────────
+    await onglet('Transactions');
+    const saisir=async(type,{desc,montant,date,compte,categorie})=>{
+      await app.getByRole('button',{name:'+ Nouvelle opération'}).click();
+      await expect(app.locator('#modal-tx-desc')).toBeFocused();
+      if(type==='entrée') await app.click('#btn-type-in');
+      await app.fill('#modal-tx-desc',desc);
+      await app.fill('#modal-tx-amount',montant);
+      await app.fill('#modal-tx-date',date);
+      await app.selectOption('#modal-tx-compte',{label:compte});
+      if(categorie) await app.selectOption('#modal-tx-cat',categorie);
+      await app.click('#tx-modal-save');
+      await expect(app.locator('#tx-modal')).not.toHaveClass(/open/);
+    };
+    await saisir('sortie',{desc:depense,montant:'42.50',date:hier,compte:courant});
+    await onglet('Comptes');
+    await expect(carte(courant).locator('.compte-solde-actuel')).toHaveText(euros(957.50));
+
+    // ── 3. Relevé égal, la veille : la carte passe au vert ────────────────────
+    await carte(courant).getByRole('button',{name:'📊 Saisir un solde'}).click();
+    await expect(app.locator('#modal-solde-montant')).toBeFocused();
+    await app.fill('#modal-solde-montant','957.50');
+    await app.fill('#modal-solde-date',hier);
+    await app.click('#solde-modal-save');
+    await expect(app.locator('#solde-history-list')).toContainText('957,50');
+    await expect(app.locator('#solde-modal-error')).toBeHidden();
+    await app.click('#solde-modal .modal-footer .btn-cancel');
+    await expect(app.locator('#solde-modal')).not.toHaveClass(/open/);
+    await expect(carte(courant).locator('.compte-voyant')).toHaveText('✓ rapproché');
+    await expect(carte(courant).locator('.compte-voyant')).toHaveClass(/badge-ok/);
+    // En base : la vue confirme un écart nul.
+    expect(await app.evaluate(async nom=>{
+      const {data:c}=await sb.from('comptes').select('id').eq('nom',nom);
+      const {data}=await sb.from('v_soldes_comptes').select('solde_calcule,ecart').eq('compte_id',c[0].id);
+      return data;
+    },courant)).toEqual([{solde_calcule:957.5,ecart:0}]);
+
+    // ── 4. Virement interne de 100 € en deux opérations, aujourd'hui ─────────
+    const categorieMvt=await app.evaluate(()=>{const c=categories.find(x=>x.mouvement_compte===true);return c?String(c.id):null;});
+    expect(categorieMvt,'l\'utilisateur de test n\'a pas de catégorie « Mouvement de compte »').toBeTruthy();
+    await onglet('Transactions');
+    const indicateur=app.locator('#mvt-compte-indicateur');
+    const indicateurAvant=await indicateur.innerText();
+    const metriquesAvant=await app.locator('#metrics').innerText();
+    await saisir('sortie',{desc:virement,montant:'100',date:aujourdhuiParis(),compte:courant,categorie:categorieMvt});
+    await expect(indicateur).not.toHaveText(indicateurAvant);              // virement à moitié : l'écart se voit
+    await saisir('entrée',{desc:virement,montant:'100',date:aujourdhuiParis(),compte:livret,categorie:categorieMvt});
+    await expect(indicateur).toHaveText(indicateurAvant);                  // les deux moitiés s'annulent
+    expect(await app.locator('#metrics').innerText()).toBe(metriquesAvant); // exclu des métriques du mois
+
+    await onglet('Comptes');
+    await expect(carte(courant).locator('.compte-solde-actuel')).toHaveText(euros(857.50));
+    await expect(carte(livret).locator('.compte-solde-actuel')).toHaveText(euros(300));
+    await expect(carte(courant).locator('.compte-voyant')).toHaveText('✓ rapproché');
+    await expect(carte(courant).locator('.compte-depuis-releve')).toContainText('Depuis le relevé (1 opération)');
+    // Patrimoine = départ + 1 000 + 200 − 42,50 : le virement ne le change pas.
+    expect(Math.round(await lireNombre('#patrimoine-total')*100)).toBe(Math.round((patrimoineDepart+1157.50)*100));
   });
 });
