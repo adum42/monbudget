@@ -81,6 +81,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .form-group select option{background:var(--surface2);}
 .btn-add{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;}
 .btn-add:hover{opacity:.88;}
+.btn-add:disabled{opacity:.45;cursor:wait;}
 .btn-del{padding:4px 8px;background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:11px;}
 .btn-del:hover{border-color:var(--red);color:var(--red);}
 .btn-edit{padding:4px 8px;background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:13px;}
@@ -511,8 +512,8 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
     <!-- TRANSACTIONS -->
     <div class="section active" id="tab-transactions">
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;flex-wrap:wrap;">
-        <button class="btn-add" style="background:var(--green);" onclick="openTxModal(null,'entrée')">+ Entrée d'argent</button>
-        <button class="btn-add" style="background:var(--red);" onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
+        <button class="btn-add" style="background:var(--green);" data-saisie onclick="openTxModal(null,'entrée')">+ Entrée d'argent</button>
+        <button class="btn-add" style="background:var(--red);" data-saisie onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -543,7 +544,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <div class="patrimoine-label">Patrimoine total</div>
           <div class="patrimoine-value" id="patrimoine-total">0,00 €</div>
         </div>
-        <button class="btn-add" onclick="openCompteModal(null)">+ Nouveau compte</button>
+        <button class="btn-add" data-saisie onclick="openCompteModal(null)">+ Nouveau compte</button>
       </div>
       <div class="comptes-grid" id="comptes-cards"></div>
       <div class="card">
@@ -559,7 +560,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Mes catégories</div>
           <div style="font-size:12px;color:var(--muted);">Clique sur ✏️ pour modifier</div>
         </div>
-        <button class="btn-add" onclick="openCatModal(null)">+ Nouvelle catégorie</button>
+        <button class="btn-add" data-saisie onclick="openCatModal(null)">+ Nouvelle catégorie</button>
       </div>
       <div class="card">
         <div class="modal-info" id="cat-info" role="status" style="display:none;margin-bottom:12px;"></div>
@@ -613,6 +614,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let erreurChargementTx=null;
 let soldesComptes=[];          // lignes de la vue v_soldes_comptes (#8)
 let erreurChargementComptes=null;
+let chargementsEnCours=0;       // chargements loadAll() en cours (#58)
 
 // ── EMOJI ─────────────────────────────────────────────
 const EMOJI_CATS={
@@ -814,6 +816,22 @@ function badgeMouvementsCompte(total){
 }
 // ══ FIN FONCTIONS PURES INDICATEUR MOUVEMENTS DE COMPTE (#70) ══
 
+// ══ DÉBUT FONCTIONS PURES CHARGEMENT (#58) ════════════
+// Tant qu'un chargement des données (loadAll) est en cours, les listes (comptes, catégories)
+// peuvent être vides : on n'ouvre aucune fenêtre de saisie de création.
+const TITRE_CHARGEMENT='Chargement des données en cours…';
+function saisieBloquee(chargementsEnCours){return Number(chargementsEnCours)>0;}
+// État des boutons marqués data-saisie : {disabled, title} (title null = pas d'infobulle).
+function etatBoutonsSaisie(chargementsEnCours){
+  const bloque=saisieBloquee(chargementsEnCours);
+  return {disabled:bloque,title:bloque?TITRE_CHARGEMENT:null};
+}
+// Raccourci N : nouvelle sortie seulement si connecté, onglet Transactions, aucune fenêtre ouverte, données chargées.
+function raccourciNouvelleTxPossible({connecte,ongletTransactions,modaleOuverte,chargementsEnCours}){
+  return !!connecte&&!!ongletTransactions&&!modaleOuverte&&!saisieBloquee(chargementsEnCours);
+}
+// ══ FIN FONCTIONS PURES CHARGEMENT (#58) ══════════════
+
 // ── DATE DU JOUR : FONCTION PURE (#45) ────────────────
 // Date au format AAAA-MM-JJ dans le fuseau du navigateur (et non en UTC comme toISOString,
 // qui donne la veille entre minuit et 1 h en hiver, 2 h en été, à Paris).
@@ -845,7 +863,10 @@ function effacerErreurTx(){
   el.textContent='';el.style.display='none';
 }
 
-function openTxModal(tx, defaultType){ouvrirModaleTx(tx||null,tx?'edition':'nouveau',defaultType);}
+function openTxModal(tx, defaultType){
+  if(!tx&&saisieBloquee(chargementsEnCours)) return;   // comptes pas encore chargés (#58)
+  ouvrirModaleTx(tx||null,tx?'edition':'nouveau',defaultType);
+}
 // mode : 'nouveau' | 'edition' | 'duplication'
 function ouvrirModaleTx(tx,mode,defaultType){
   editingTxId=mode==='edition'?tx.id:null;
@@ -1616,7 +1637,7 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app-screen').style.display='flex';
     document.getElementById('user-email').textContent=currentUser.email;
-    await loadAll();
+    await chargerDonnees();
   } else {
     currentUser=null;
     document.getElementById('auth-screen').style.display='flex';
@@ -1625,6 +1646,19 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 });
 
 // ── DATA ──────────────────────────────────────────────
+// Boutons de saisie (data-saisie) inactifs pendant le chargement, réactivés à la fin même en cas d'erreur (#58).
+function majBoutonsSaisie(){
+  const etat=etatBoutonsSaisie(chargementsEnCours);
+  document.querySelectorAll('[data-saisie]').forEach(b=>{
+    b.disabled=etat.disabled;
+    if(etat.title) b.title=etat.title; else b.removeAttribute('title');
+  });
+}
+async function chargerDonnees(){
+  chargementsEnCours++;majBoutonsSaisie();
+  try{await loadAll();}
+  finally{chargementsEnCours--;majBoutonsSaisie();}
+}
 async function loadAll(){await Promise.all([loadCategories(),loadTransactions(),loadComptes()]);renderAll();}
 // select('*') : mouvement_compte (#68) est chargée avec le reste (exclusion des stats, #69)
 async function loadCategories(){
@@ -2074,7 +2108,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='n'||e.key==='N'){
     // Ouvrir nouvelle transaction si aucune modale ouverte
     const anyOpen=[...document.querySelectorAll('.modal-overlay.open')].length>0;
-    if(!anyOpen&&currentUser&&document.getElementById('tab-transactions').classList.contains('active')){
+    if(raccourciNouvelleTxPossible({connecte:!!currentUser,ongletTransactions:document.getElementById('tab-transactions').classList.contains('active'),modaleOuverte:anyOpen,chargementsEnCours})){
       openTxModal(null,'sortie');
     }
   }
