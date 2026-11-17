@@ -12,6 +12,8 @@
 //   base     : faux Supabase en mémoire (tables, écritures reçues, erreur forcée). Sans connexion.
 //              La vue v_soldes_comptes y est recalculée à chaque lecture (#66) ; une erreur de lecture
 //              se force par table avec base.forcerErreurLecture('v_soldes_comptes','42501').
+//              Avec test.use({lecturesRetenues:true}), les lectures attendent base.libererLectures() :
+//              l'app reste « en cours de chargement » aussi longtemps que le test le veut (#58).
 //   app      : la page de l'app ouverte, connectée à la fausse base, bandeau TEST contrôlé.
 //
 // L'horloge de la page est figée au mercredi 4 novembre 2026, 10 h, heure de Paris :
@@ -106,6 +108,10 @@ function creerFausseBase(){
   b.forcerErreur=code=>{b.erreurForcee=code;};
   // Les prochaines lectures de cette table renverront cette erreur, jusqu'à b.forcerErreurLecture(table,null) (#66).
   b.forcerErreurLecture=(table,code)=>{b.erreursLecture[table]=code;};
+  // Lectures retenues (#58) : chaque lecture REST attend b.libererLectures(). Déterministe, sans délai.
+  b.verrouLectures=null;b.lecturesEnAttente=0;
+  b.retenirLectures=()=>{let liberer;b.verrouLectures=new Promise(r=>{liberer=r;});b.libererLectures=()=>{b.verrouLectures=null;liberer();};};
+  b.libererLectures=()=>{};
 
   const filtres=url=>[...url.searchParams].filter(([k])=>!['select','order','limit','offset','on_conflict','columns'].includes(k))
     .map(([col,v])=>[col,v.replace(/^eq\./,'')]);
@@ -124,6 +130,7 @@ function creerFausseBase(){
     const f=filtres(url);
 
     if(methode==='GET'||methode==='HEAD'){
+      if(b.verrouLectures){b.lecturesEnAttente++;await b.verrouLectures;b.lecturesEnAttente--;}
       const codeLecture=b.erreursLecture[table];
       if(codeLecture) return route.fulfill({status:400,json:{code:codeLecture,message:'erreur simulée '+codeLecture,details:null,hint:null},headers:CORS});
       const source=table==='v_soldes_comptes'?vueSoldesComptes(b.tables):b.tables[table];
@@ -216,7 +223,15 @@ const test=base.test.extend({
     expect(inattendues,'erreurs dans la console').toEqual([]);
   },
 
-  base:async({},use)=>{await use(creerFausseBase());},
+  // true : les lectures de la fausse base attendent base.libererLectures() (#58). Modifiable par test.use().
+  lecturesRetenues:[false,{option:true}],
+
+  base:async({lecturesRetenues},use)=>{
+    const b=creerFausseBase();
+    if(lecturesRetenues) b.retenirLectures();
+    await use(b);
+    b.libererLectures();   // ne laisse aucune requête suspendue à la fin du test
+  },
 
   reseau:async({context,journal,base,baseReelle},use)=>{
     await context.route('**/*',async route=>{

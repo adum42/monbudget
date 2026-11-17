@@ -22,6 +22,7 @@ tests/
 │   ├── echappement.spec.js           noms piégés (& < > ' ") en texte : catégories, listes, soldes, Top 5 (#49)
 │   ├── mouvement-compte.spec.js      plus de mouvement ; catégorie « Mouvement de compte » exclue des stats (#69)
 │   ├── indicateur-mouvements.spec.js badge « Mouvements de compte » en tête de la liste (#70)
+│   ├── chargement.spec.js            pas de fenêtre de saisie pendant le chargement des données (#58)
 │   ├── fonctions-pures.spec.js       fonctions de index.html appelées dans la page (page.evaluate)
 │   └── connecte.spec.js              mêmes parcours sur la vraie base TEST
 └── sql/                              tests SQL (#25)
@@ -48,7 +49,7 @@ npx playwright test --headed            # en voyant le navigateur
 npx playwright test --ui                # mode interactif : pas à pas, avec l'état de la page
 ```
 
-Sans les variables `TEST_EMAIL` / `TEST_PASSWORD`, les 3 tests connectés sont **ignorés** (« skipped ») : c'est normal en local. Résultat attendu : `116 passed, 3 skipped`.
+Sans les variables `TEST_EMAIL` / `TEST_PASSWORD`, les 3 tests connectés sont **ignorés** (« skipped ») : c'est normal en local. Résultat attendu : `148 passed, 3 skipped`.
 
 **Session cloud de Claude** : le téléchargement du navigateur est bloqué ; utiliser le Chrome du système :
 
@@ -61,7 +62,7 @@ CHROMIUM_PATH=/usr/bin/google-chrome npx playwright test
 L'app est servie en local, donc branchée sur TEST (aiguillage de #20), mais **aucune requête ne sort** :
 
 - les CDN (`supabase-js`, `Chart.js`) sont servis depuis `tests/node_modules` ;
-- les appels à Supabase TEST sont interceptés et servis par une **fausse base en mémoire** (fixture `base` de `e2e/outils.js`), qui note aussi chaque écriture envoyée par l'app (`base.ecritures`) et peut renvoyer une erreur Postgres à la demande (`base.forcerErreur('23514')` pour la prochaine écriture, `base.forcerErreurLecture('v_soldes_comptes','42501')` pour les lectures d'une table) ; la vue `v_soldes_comptes` y est recalculée à chaque lecture à partir de `comptes`, `soldes` et `transactions` (#66) ;
+- les appels à Supabase TEST sont interceptés et servis par une **fausse base en mémoire** (fixture `base` de `e2e/outils.js`), qui note aussi chaque écriture envoyée par l'app (`base.ecritures`) et peut renvoyer une erreur Postgres à la demande (`base.forcerErreur('23514')` pour la prochaine écriture, `base.forcerErreurLecture('v_soldes_comptes','42501')` pour les lectures d'une table), et retenir ses lectures pour simuler une base lente sans aucun délai (`test.use({lecturesRetenues:true})`, puis `base.libererLectures()`, #58) ; la vue `v_soldes_comptes` y est recalculée à chaque lecture à partir de `comptes`, `soldes` et `transactions` (#66) ;
 - tout appel vers un autre site, ou vers un autre projet Supabase (la prod), est **bloqué et fait échouer le test** ;
 - l'horloge de la page est figée au **mercredi 4 novembre 2026, 10 h, heure de Paris**, avec `timezoneId: 'Europe/Paris'` : les dates et le mois affiché sont toujours les mêmes ;
 - à la fin de chaque test, **toute erreur dans la console** fait échouer le test, sauf celles déclarées attendues (`journal.attendre(/motif/)`).
