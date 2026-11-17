@@ -622,6 +622,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
         <div class="card"><div class="card-title">Sorties par catégorie</div><div class="chart-wrap" id="chart-cat-wrap"><canvas id="chart-cat"></canvas></div></div>
         <div class="card"><div class="card-title">Évolution 6 mois</div><div class="chart-wrap"><canvas id="chart-months"></canvas></div></div>
       </div>
+      <div class="card" id="stats-epargne-card"><div class="card-title">Épargne — 6 mois</div><div class="chart-wrap"><canvas id="chart-epargne" aria-label="Épargne des 6 derniers mois : entrées moins sorties, hors Mouvement de compte" role="img"></canvas></div></div>
       <div class="card" id="stats-top5-card">
         <div class="card-title">Top 5 catégories de dépenses</div>
         <div class="top5-list" id="stats-top5"></div>
@@ -652,7 +653,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let currentUser=null,categories=[],transactions=[],comptes=[],soldes=[];
 let currentMonth=dateLocaleISO().slice(0,7);
-let chartCat=null,chartMonths=null,chartComptes=null;
+let chartCat=null,chartMonths=null,chartComptes=null,chartEpargne=null;
 let currentTricount='non';
 let viewAllMonths=false;
 let deleteConfirmPending=false;
@@ -1020,6 +1021,52 @@ function badgeMouvementsCompte(total){
   return {ok:false,classe:'badge-ko',texte:'✗ Mouvements de compte : '+(centimes<0?'−':'+')+abs+' €'};
 }
 // ══ FIN FONCTIONS PURES INDICATEUR MOUVEMENTS DE COMPTE (#70) ══
+
+// ══ DÉBUT FONCTIONS PURES ÉPARGNE (#100) ═════════════
+// Sans DOM ni Supabase : testables directement (tests/front/ticket100_epargne.test.js).
+// Utilisent txPourStats (bloc #69) : la catégorie « Mouvement de compte » est exclue, comme dans
+// toutes les statistiques. Épargne du mois = entrées − sorties, calculée en centimes entiers.
+
+// Les n derniers mois jusqu'au mois de « aujourdhui » inclus, du plus ancien au plus récent
+// (« AAAA-MM », fuseau du navigateur). Période commune à « Évolution 6 mois » et « Épargne — 6 mois ».
+function moisGlissants(aujourdhui,n){
+  const mois=[];
+  for(let i=n-1;i>=0;i--){
+    const d=new Date(aujourdhui.getFullYear(),aujourdhui.getMonth()-i,1);
+    mois.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  return mois;
+}
+
+// Pour chaque mois de la liste (même ordre) : l'épargne en euros, ou null si le mois n'a aucune
+// opération (entrée ou sortie) hors « Mouvement de compte ». Un mois dont le total vaut 0 renvoie 0.
+// Lignes vides, type inconnu ou montant illisible : ignorés.
+function epargneParMois(txs,listeCategories,mois){
+  const centimes={},vus={};
+  txPourStats(txs,listeCategories).forEach(t=>{
+    if(t.type!=='entrée'&&t.type!=='sortie') return;
+    const m=String(t.date||'').slice(0,7);
+    const c=Math.round(Number(t.montant)*100);
+    if(!Number.isFinite(c)) return;
+    vus[m]=true;
+    centimes[m]=(centimes[m]||0)+(t.type==='entrée'?c:-c);
+  });
+  return (mois||[]).map(m=>vus[m]?(centimes[m]/100)+0:null);   // +0 : pas de −0
+}
+
+// Texte de l'infobulle : « +612,00 € », « −150,00 € » (vrai signe moins), « 0,00 € » ou « aucune opération ».
+function libelleEpargne(valeur){
+  if(valeur===null||valeur===undefined) return 'aucune opération';
+  const txt=Math.abs(valeur).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  return (valeur>0?'+':valeur<0?'−':'')+txt;
+}
+
+// Bornes de l'axe Y, symétriques autour de 0 pour que la ligne 0 soit au milieu (100 € au moins).
+function bornesAxeEpargne(valeurs){
+  const max=Math.max(100,...(valeurs||[]).filter(v=>typeof v==='number'&&Number.isFinite(v)).map(Math.abs));
+  return {min:-max,max};
+}
+// ══ FIN FONCTIONS PURES ÉPARGNE (#100) ═══════════════
 
 // ══ DÉBUT FONCTIONS PURES FILTRES ET SOUS-TOTAL (#72) ═══
 // Sans DOM ni Supabase : testables directement (tests/front/ticket72_filtres_sous_total.test.js).
@@ -2422,13 +2469,47 @@ function renderCharts(){
   } else {
     const ctx=document.getElementById('chart-cat').getContext('2d');ctx.clearRect(0,0,999,999);
   }
-  const months=[];
-  for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);}
+  const months=moisGlissants(new Date(),6);   // même période pour « Évolution 6 mois » et « Épargne — 6 mois » (#100)
   const incomes=months.map(m=>txsStats.filter(t=>t.type==='entrée'&&t.date.startsWith(m)).reduce((s,t)=>s+t.montant,0));
   const expenses=months.map(m=>txsStats.filter(t=>t.type==='sortie'&&t.date.startsWith(m)).reduce((s,t)=>s+t.montant,0));
   const mlabels=months.map(m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1).toLocaleDateString('fr-FR',{month:'short'});});
   if(chartMonths) chartMonths.destroy();
   chartMonths=new Chart(document.getElementById('chart-months'),{type:'bar',data:{labels:mlabels,datasets:[{label:'Entrées',data:incomes,backgroundColor:'rgba(34,201,122,0.7)',borderRadius:4},{label:'Sorties',data:expenses,backgroundColor:'rgba(240,82,82,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7A7D8A',font:{size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#7A7D8A'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#7A7D8A',callback:v=>v+' €'},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  renderChartEpargne(txsStats,months,mlabels);
+}
+
+// Histogramme « Épargne — 6 mois » (#100) : une barre par mois, verte au-dessus de 0, rouge en dessous.
+// Un mois sans opération reste sur l'axe sans barre (valeur 0 dessinée, infobulle « aucune opération »).
+function renderChartEpargne(txsStats,months,mlabels){
+  const epargne=epargneParMois(txsStats,categories,months);   // txsStats est déjà filtré : txPourStats est idempotente
+  const bornes=bornesAxeEpargne(epargne);
+  if(chartEpargne) chartEpargne.destroy();
+  chartEpargne=new Chart(document.getElementById('chart-epargne'),{
+    type:'bar',
+    data:{labels:mlabels,datasets:[{
+      label:'Épargne',
+      data:epargne.map(v=>v===null?0:v),
+      epargne,                                  // valeurs brutes (null = aucune opération), lues par l'infobulle
+      backgroundColor:epargne.map(v=>v!==null&&v<0?'rgba(240,82,82,0.7)':'rgba(34,201,122,0.7)'),
+      borderRadius:4,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},   // infobulle sur toute la colonne, même sans barre
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>libelleEpargne(ctx.dataset.epargne[ctx.dataIndex])}}},
+      scales:{
+        x:{ticks:{color:'#7A7D8A'},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{
+          suggestedMin:bornes.min,suggestedMax:bornes.max,
+          ticks:{color:'#7A7D8A',callback:v=>Number(v).toLocaleString('fr-FR')+' €'},
+          grid:{
+            color:c=>c.tick&&c.tick.value===0?'rgba(255,255,255,0.45)':'rgba(255,255,255,0.04)',
+            lineWidth:c=>c.tick&&c.tick.value===0?1.5:1,
+          },
+        },
+      },
+    },
+  });
 }
 
 // Pas de fermeture au clic extérieur (#71) : les 4 modales (transaction, catégorie, compte,
