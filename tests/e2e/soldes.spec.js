@@ -18,6 +18,10 @@ async function ouvrirSoldes(page,base){
   await page.getByRole('button',{name:'Comptes',exact:true}).click();
   await page.locator('.compte-card',{hasText:'TEST QA Compte courant'}).locator('[data-solde-compte-id]').click();
   await expect(page.locator('#solde-modal')).toHaveClass(/open/);
+  // openSoldeModal() pose le focus sur le Montant 100 ms après l'ouverture (setTimeout).
+  // On l'attend avant toute saisie : sinon, en CI (machine plus rapide), le focus peut basculer
+  // pendant qu'on remplit la Note, et la fin du texte part dans le Montant (« 1300.5E3 », #89).
+  await expect(page.locator('#modal-solde-montant')).toBeFocused();
   await expect(lignes(page)).toHaveCount(2);
 }
 const lignes=page=>page.locator('#solde-history-list .solde-entry');
