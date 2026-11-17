@@ -190,7 +190,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .compte-card-info{}
 .compte-card-name{font-size:15px;font-weight:600;margin-bottom:2px;}
 .compte-card-bank{font-size:11px;color:var(--muted);}
-.compte-solde-actuel{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--green);margin-bottom:4px;}
+.compte-solde-actuel{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--green);margin-bottom:4px;white-space:nowrap;}
 .compte-solde-date{font-size:11px;color:var(--muted);margin-bottom:12px;}
 .compte-evolution{font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
 .compte-actions{display:flex;gap:8px;}
@@ -224,7 +224,8 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .btn-sm-danger:hover{border-color:var(--red);color:var(--red);}
 .patrimoine-total{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;}
 .patrimoine-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
-.patrimoine-value{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--accent);}
+.patrimoine-value{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--accent);white-space:nowrap;}
+/* #56 : le montant et « € » ne sont jamais séparés (aussi pour le solde calculé des cartes comptes) */
 
 /* HISTORIQUE SOLDES */
 .solde-history{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;}
@@ -251,6 +252,12 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
   .tx-item{flex-wrap:wrap;row-gap:8px;}
   .tx-left{flex-basis:calc(100% - 25px);}
   .tx-right{flex:1 1 100%;justify-content:flex-end;}
+  /* Patrimoine total et soldes des cartes comptes (#56) : police réduite pour qu'un montant
+     à 7 chiffres tienne sur une ligne ; le bouton « + Nouveau compte » passe dessous si besoin. */
+  .patrimoine-total{flex-wrap:wrap;gap:12px;}
+  .patrimoine-total>div{min-width:0;}
+  .patrimoine-value{font-size:24px;}
+  .compte-solde-actuel{font-size:24px;}
 }
 
 /* MODALE GÉNÉRIQUE */
