@@ -23,6 +23,7 @@ tests/
 │   ├── mouvement-compte.spec.js      plus de mouvement ; catégorie « Mouvement de compte » exclue des stats (#69)
 │   ├── indicateur-mouvements.spec.js badge « Mouvements de compte » en tête de la liste (#70)
 │   ├── chargement.spec.js            pas de fenêtre de saisie pendant le chargement des données (#58)
+│   ├── etape1.spec.js                scénario de validation de l'étape 1 : compte, dépense, relevé, virement (#10)
 │   ├── fonctions-pures.spec.js       fonctions de index.html appelées dans la page (page.evaluate)
 │   └── connecte.spec.js              mêmes parcours sur la vraie base TEST
 └── sql/                              tests SQL (#25)
