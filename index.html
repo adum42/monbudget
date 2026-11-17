@@ -89,7 +89,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 
 /* TRANSACTIONS */
 .tx-filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-.tx-filters select{padding:7px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;}
+.tx-filters select{padding:7px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;max-width:100%;min-width:0;text-overflow:ellipsis;}
+/* Filtre compte (#72) : un nom de compte très long ne doit pas élargir la barre de filtres */
+#f-compte{max-width:220px;}
 .tx-list{display:flex;flex-direction:column;gap:8px;}
 .tx-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;gap:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);transition:border-color .15s;}
 .pin-icon{display:flex;align-items:center;flex-shrink:0;color:var(--muted);}
@@ -210,6 +212,13 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 /* Indicateur « Mouvements de compte » en tête de la liste des transactions (#70) */
 .mvt-compte-indicateur{margin:-4px 0 14px;}
 .mvt-compte-indicateur .badge{display:inline-block;font-size:12px;padding:5px 10px;line-height:1.4;max-width:100%;}
+/* Ligne de sous-total des transactions affichées (#72) */
+.tx-sous-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:-4px 0 12px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.tx-sous-total[hidden]{display:none;}
+.tx-sous-total .st-montant{white-space:nowrap;font-weight:600;}
+.tx-sous-total .st-montant.green{color:var(--green);}
+.tx-sous-total .st-montant.red{color:var(--red);}
+.tx-sous-total .st-sep{color:var(--border);}
 .btn-sm{padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;}
 .btn-sm:hover{border-color:var(--accent);color:var(--accent);}
 .btn-sm-danger:hover{border-color:var(--red);color:var(--red);}
@@ -540,7 +549,9 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <select id="f-cat" onchange="renderTransactions()"><option value="all">Toutes catégories</option></select>
           <select id="f-tricount" onchange="renderTransactions()"><option value="all">Tricount : tous</option><option value="non">Hors tricount</option><option value="oui">À valider</option><option value="oui validé">Validés</option></select>
           <select id="f-epingle" onchange="renderTransactions()"><option value="all">Épingle : tous</option><option value="oui">Épinglés</option><option value="non">Non épinglés</option></select>
+          <select id="f-compte" aria-label="Filtrer par compte" onchange="renderTransactions()"><option value="all">Tous les comptes</option></select>
         </div>
+        <div class="tx-sous-total" id="tx-sous-total" aria-live="polite" hidden></div>
         <div class="tx-list" id="tx-list"><div class="loading">Chargement...</div></div>
       </div>
     </div>
@@ -823,6 +834,72 @@ function badgeMouvementsCompte(total){
   return {ok:false,classe:'badge-ko',texte:'✗ Mouvements de compte : '+(centimes<0?'−':'+')+abs+' €'};
 }
 // ══ FIN FONCTIONS PURES INDICATEUR MOUVEMENTS DE COMPTE (#70) ══
+
+// ══ DÉBUT FONCTIONS PURES FILTRES ET SOUS-TOTAL (#72) ═══
+// Sans DOM ni Supabase : testables directement (tests/front/ticket72_filtres_sous_total.test.js).
+// Utilisent categorieMouvementCompte et txPourStats (bloc #69). La barre #metrics ne suit aucun
+// filtre ; seule la ligne de sous-total de la carte « Historique » porte sur les lignes affichées.
+
+// Transactions affichées dans la liste : période puis tous les filtres. Le tri est fait à part.
+// filtres : {mois ('AAAA-MM', ou null / '' pour tout l'historique), compte, type, categorie,
+// tricount, epingle ('all' ou absent = pas de filtre), recherche (texte libre)}.
+// Le filtre compte ne lit que compte_id : une opération sans compte n'apparaît que sous « Tous les comptes ».
+function filtrerTransactions(txs,filtres){
+  const f=filtres||{};
+  const actif=v=>v!==undefined&&v!==null&&v!==''&&v!=='all';
+  const recherche=String(f.recherche||'').trim().toLowerCase();
+  return (txs||[]).filter(t=>{
+    if(!t) return false;
+    if(f.mois&&!String(t.date||'').startsWith(f.mois)) return false;
+    if(actif(f.compte)&&String(t.compte_id??'')!==String(f.compte)) return false;
+    if(actif(f.type)&&t.type!==f.type) return false;
+    if(actif(f.categorie)&&String(t.categorie_id??'')!==String(f.categorie)) return false;
+    if(actif(f.tricount)&&(t.tricount||'non')!==f.tricount) return false;
+    if(f.epingle==='oui'&&t.epingle!==true) return false;
+    if(f.epingle==='non'&&t.epingle) return false;
+    if(recherche&&!String(t.description||'').toLowerCase().includes(recherche)
+      &&!String(t.note||'').toLowerCase().includes(recherche)) return false;
+    return true;
+  });
+}
+
+// Sous-total des transactions affichées. nb compte toutes les lignes ; entrees et sorties (positives,
+// calculées en centimes entiers) excluent la catégorie « Mouvement de compte », sauf si le filtre
+// catégorie la sélectionne explicitement. null si aucune ligne (sous-total masqué).
+function sousTotalTransactions(txsAffichees,listeCategories,filtreCategorie){
+  const liste=(txsAffichees||[]).filter(Boolean);
+  if(!liste.length) return null;
+  const mvt=categorieMouvementCompte(listeCategories);
+  const surMouvement=!!mvt&&filtreCategorie!==undefined&&filtreCategorie!==null&&String(filtreCategorie)===String(mvt.id);
+  const comptees=surMouvement?liste:txPourStats(liste,listeCategories);
+  let entrees=0,sorties=0;
+  comptees.forEach(t=>{
+    const c=Math.round(Number(t.montant)*100);
+    if(!Number.isFinite(c)) return;
+    if(t.type==='entrée') entrees+=c;
+    else if(t.type==='sortie') sorties+=c;
+  });
+  return {nb:liste.length,entrees:entrees/100,sorties:sorties/100};
+}
+
+// Morceaux du texte « N opérations · +X € · −Y € » (montants au format fr-FR, 2 décimales).
+function texteSousTotal(st){
+  if(!st) return null;
+  const f=v=>Number(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return {
+    nb:st.nb+(st.nb>1?' opérations':' opération'),
+    entrees:'+'+f(st.entrees)+' €',
+    sorties:'−'+f(st.sorties)+' €',
+  };
+}
+
+// Valeur à garder dans la liste f-compte après un rechargement des comptes : la valeur actuelle si
+// le compte existe encore, sinon 'all' (« Tous les comptes »).
+function valeurFiltreCompte(valeur,listeComptes){
+  if(valeur===undefined||valeur===null||valeur===''||valeur==='all') return 'all';
+  return (listeComptes||[]).some(c=>c&&String(c.id)===String(valeur))?String(valeur):'all';
+}
+// ══ FIN FONCTIONS PURES FILTRES ET SOUS-TOTAL (#72) ═════
 
 // ══ DÉBUT FONCTIONS PURES CHARGEMENT (#58) ════════════
 // Tant qu'un chargement des données (loadAll) est en cours, les listes (comptes, catégories)
@@ -1753,6 +1830,27 @@ async function loadComptes(){
   comptes=rc.data||[];
   soldes=rs.data||[];
   soldesComptes=rv.data||[];
+  majFiltreCompte();
+}
+// Liste f-compte (#72) : même ordre et même libellé que la modale transaction ; si le compte
+// sélectionné a disparu, retour à « Tous les comptes ».
+function majFiltreCompte(){
+  const sel=document.getElementById('f-compte');
+  if(!sel) return;
+  const valeur=valeurFiltreCompte(sel.value,comptes);
+  sel.innerHTML='<option value="all">Tous les comptes</option>'+comptes.map(c=>`<option value="${esc(c.id)}">${esc(c.nom)}</option>`).join('');
+  sel.value=valeur;
+}
+// Ligne de sous-total de la carte « Historique » (#72) : masquée sans ligne affichée.
+function renderSousTotal(txsAffichees,catF){
+  const el=document.getElementById('tx-sous-total');
+  if(!el) return;
+  const t=erreurChargementTx?null:texteSousTotal(sousTotalTransactions(txsAffichees,categories,catF));
+  if(!t){el.hidden=true;el.innerHTML='';return;}
+  el.innerHTML=`<span class="st-nb">${esc(t.nb)}</span><span class="st-sep" aria-hidden="true">·</span>`
+    +`<span class="st-montant green" title="Entrées affichées">${esc(t.entrees)}</span><span class="st-sep" aria-hidden="true">·</span>`
+    +`<span class="st-montant red" title="Sorties affichées">${esc(t.sorties)}</span>`;
+  el.hidden=false;
 }
 
 // ── RENDER ────────────────────────────────────────────
@@ -1810,21 +1908,20 @@ function effacerRecherche(){
 function renderTransactions(){
   renderIndicateurMouvements();
   majCroixRecherche();
-  const typeF=document.getElementById('f-type').value;
   const catF=document.getElementById('f-cat').value;
-  const tcF=document.getElementById('f-tricount').value;
-  const epF=document.getElementById('f-epingle').value;
   const sortF=document.getElementById('f-sort').value;
-  const search=(document.getElementById('tx-search').value||'').trim().toLowerCase();
   // Les opérations « Mouvement de compte » sont listées (et comptent dans les soldes), mais sont
-  // exclues des métriques et des statistiques (txPourStats, #69)
-  let txs=viewAllMonths?transactions:txOfMonth();
-  if(typeF!=='all') txs=txs.filter(t=>t.type===typeF);
-  if(catF!=='all') txs=txs.filter(t=>t.categorie_id===catF);
-  if(tcF!=='all') txs=txs.filter(t=>(t.tricount||'non')===tcF);
-  if(epF==='oui') txs=txs.filter(t=>t.epingle===true);
-  if(epF==='non') txs=txs.filter(t=>!t.epingle);
-  if(search) txs=txs.filter(t=>t.description.toLowerCase().includes(search)||(t.note||'').toLowerCase().includes(search));
+  // exclues des métriques et des statistiques (txPourStats, #69). Filtres et sous-total : #72.
+  const txs=filtrerTransactions(transactions,{
+    mois:viewAllMonths?null:currentMonth,
+    compte:document.getElementById('f-compte').value,
+    type:document.getElementById('f-type').value,
+    categorie:catF,
+    tricount:document.getElementById('f-tricount').value,
+    epingle:document.getElementById('f-epingle').value,
+    recherche:document.getElementById('tx-search').value,
+  });
+  renderSousTotal(txs,catF);
   if(sortF==='montant-desc') txs.sort((a,b)=>b.montant-a.montant);
   else if(sortF==='montant-asc') txs.sort((a,b)=>a.montant-b.montant);
   else txs.sort((a,b)=>b.date.localeCompare(a.date));
