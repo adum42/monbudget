@@ -5,7 +5,7 @@ const {test,expect}=require('./outils');
 
 const MODALES=[
   {nom:'transaction',id:'tx-modal',champ:'#modal-tx-desc',annuler:'Annuler',
-    ouvrir:page=>page.getByRole('button',{name:'− Sortie d\'argent'}).click()},
+    ouvrir:page=>page.getByRole('button',{name:'+ Nouvelle opération'}).click()},
   {nom:'catégorie',id:'cat-modal',champ:'#modal-cat-nom',annuler:'Annuler',
     ouvrir:async page=>{
       await page.getByRole('button',{name:'Catégories',exact:true}).click();

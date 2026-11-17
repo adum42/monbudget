@@ -3,7 +3,7 @@
 // Départ (donneesInitiales) : Compte courant k1 = 1 000 + 2 000 − 4,20 − 650 = 2 345,80 € ;
 // Livret k2 = 500,00 € ; patrimoine total = 2 845,80 €.
 // Aucun rechargement de page dans ces parcours : c'est justement ce que le ticket corrige.
-const {test,expect}=require('./outils');
+const {test,expect,nouvelleOperation}=require('./outils');
 
 const COURANT='TEST QA Compte courant';
 const LIVRET='TEST QA Livret';
@@ -26,9 +26,8 @@ async function attendreModale(page){
   await expect(page.locator('#tx-modal')).toHaveClass(/open/);
   await expect(page.locator('#modal-tx-desc')).toBeFocused();
 }
-async function nouvelle(page,bouton,{desc,montant,compte,categorie}){
-  await page.getByRole('button',{name:bouton}).click();
-  await attendreModale(page);
+async function nouvelle(page,type,{desc,montant,compte,categorie}){
+  await nouvelleOperation(page,type);
   await page.fill('#modal-tx-desc',desc);
   await page.fill('#modal-tx-amount',String(montant));
   if(compte) await page.selectOption('#modal-tx-compte',compte);
@@ -38,7 +37,7 @@ async function nouvelle(page,bouton,{desc,montant,compte,categorie}){
 }
 async function ouvrirExistante(page,desc){
   await page.locator('.tx-item',{hasText:desc}).click();
-  await expect(page.locator('#tx-modal-title')).toHaveText('Modifier la transaction');
+  await expect(page.locator('#tx-modal-title')).toHaveText(/^[−+] Modifier (la sortie|l'entrée)$/);
   await attendreModale(page);
 }
 
@@ -47,18 +46,18 @@ test.beforeEach(async({app})=>{
 });
 
 test('entrée : le solde du compte augmente du montant, sans rechargement',async({app})=>{
-  await nouvelle(app,'+ Entrée d\'argent',{desc:'TEST QA Remboursement',montant:'120.35',compte:'k2'});
+  await nouvelle(app,'entrée',{desc:'TEST QA Remboursement',montant:'120.35',compte:'k2'});
   await verifierSoldes(app,2345.80,620.35);
 });
 
 test('sortie : le solde du compte diminue',async({app})=>{
-  await nouvelle(app,'− Sortie d\'argent',{desc:'TEST QA Pharmacie',montant:'12.5',compte:'k1'});
+  await nouvelle(app,'sortie',{desc:'TEST QA Pharmacie',montant:'12.5',compte:'k1'});
   await verifierSoldes(app,2333.30,500);
 });
 
 test('virement interne (#69) : sortie + entrée « Mouvement de compte », le départ diminue, l\'arrivée augmente, le patrimoine ne bouge pas',async({app})=>{
-  await nouvelle(app,'− Sortie d\'argent',{desc:'TEST QA Virement livret',montant:'300',compte:'k1',categorie:'cv'});
-  await nouvelle(app,'+ Entrée d\'argent',{desc:'TEST QA Virement livret',montant:'300',compte:'k2',categorie:'cv'});
+  await nouvelle(app,'sortie',{desc:'TEST QA Virement livret',montant:'300',compte:'k1',categorie:'cv'});
+  await nouvelle(app,'entrée',{desc:'TEST QA Virement livret',montant:'300',compte:'k2',categorie:'cv'});
   await verifierSoldes(app,2045.80,800);
 });
 
@@ -81,7 +80,7 @@ test('duplication : la copie est prise en compte dans le solde',async({app})=>{
 });
 
 test('suppression : le solde revient à sa valeur précédente',async({app})=>{
-  await nouvelle(app,'− Sortie d\'argent',{desc:'TEST QA À supprimer',montant:'75',compte:'k1'});
+  await nouvelle(app,'sortie',{desc:'TEST QA À supprimer',montant:'75',compte:'k1'});
   await verifierSoldes(app,2270.80,500);
 
   await ouvrirExistante(app,'TEST QA À supprimer');
@@ -96,7 +95,7 @@ test('erreur de chargement des comptes : message sur l\'onglet Comptes, liste de
   journal.attendre(/loadComptes/);
   journal.attendre(/status of 400/);
   base.forcerErreurLecture('v_soldes_comptes','42501');
-  await nouvelle(app,'− Sortie d\'argent',{desc:'TEST QA Malgré l\'erreur',montant:'9',compte:'k1'});
+  await nouvelle(app,'sortie',{desc:'TEST QA Malgré l\'erreur',montant:'9',compte:'k1'});
 
   // La transaction est enregistrée et la liste est redessinée malgré l'échec des comptes.
   await expect(app.locator('.tx-item',{hasText:'TEST QA Malgré l\'erreur'})).toBeVisible();
@@ -110,6 +109,6 @@ test('erreur de chargement des comptes : message sur l\'onglet Comptes, liste de
   // La lecture suivante réussit : les soldes reflètent l'opération.
   base.forcerErreurLecture('v_soldes_comptes',null);
   await onglet(app,'Transactions');
-  await nouvelle(app,'− Sortie d\'argent',{desc:'TEST QA Après l\'erreur',montant:'1',compte:'k1'});
+  await nouvelle(app,'sortie',{desc:'TEST QA Après l\'erreur',montant:'1',compte:'k1'});
   await verifierSoldes(app,2335.80,500);
 });

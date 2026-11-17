@@ -78,7 +78,7 @@ test.describe('avec des données TEST QA',()=>{
   test('créer puis supprimer une transaction',async({app})=>{
     await seConnecter(app);
 
-    await app.getByRole('button',{name:'− Sortie d\'argent'}).click();
+    await app.getByRole('button',{name:'+ Nouvelle opération'}).click();
     // Focus automatique posé 100 ms après l'ouverture : on l'attend avant de remplir.
     await expect(app.locator('#modal-tx-desc')).toBeFocused();
     await expect(app.locator('#modal-tx-date')).toHaveValue(aujourdhuiParis());

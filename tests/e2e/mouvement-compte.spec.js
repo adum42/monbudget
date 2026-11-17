@@ -2,7 +2,7 @@
 // Fausse base (outils.js) : « TEST QA Virement interne » (cv) est cochée « Mouvement de compte ».
 // Départ : novembre = entrée 2 000 (Salaire, sans catégorie) + sortie 4,20 (Boulangerie, Courses c1) ;
 // soldes : Compte courant k1 = 2 345,80 €, Livret k2 = 500,00 €.
-const {test,expect}=require('./outils');
+const {test,expect,nouvelleOperation}=require('./outils');
 
 const ID_USER='00000000-0000-4000-8000-0000000000a1';
 const COURANT='TEST QA Compte courant';
@@ -43,7 +43,7 @@ test('plus aucun moyen de créer ni de filtrer un mouvement',async({app})=>{
   await expect(app.locator('#modal-tx-depuis, #modal-tx-vers, #tx-mvt-row, #btn-type-mvt')).toHaveCount(0);
   // En modification, le choix du type ne propose qu'entrée et sortie.
   await app.locator('.tx-item',{hasText:'TEST QA Boulangerie'}).click();
-  await expect(app.locator('#tx-type-toggle-row .type-btn')).toHaveText(['+ Entrée','− Sortie']);
+  await expect(app.locator('#tx-type-toggle-row .type-btn')).toHaveText(['− Sortie','+ Entrée']);
   await expect(app.locator('#tx-cat-row')).toBeVisible();
   await expect(app.locator('#tx-compte-row')).toBeVisible();
 });
@@ -73,9 +73,8 @@ test('virement interne : visible dans la liste, absent des totaux, KPIs, graphiq
 });
 
 test('saisie d\'un virement par la modale : catégorie et compte envoyés, sans compte_dest_id',async({app,base})=>{
-  for(const [bouton,compte] of [['− Sortie d\'argent','k1'],['+ Entrée d\'argent','k2']]){
-    await app.getByRole('button',{name:bouton}).click();
-    await expect(app.locator('#modal-tx-desc')).toBeFocused();
+  for(const [type,compte] of [['sortie','k1'],['entrée','k2']]){
+    await nouvelleOperation(app,type);
     await app.fill('#modal-tx-desc','TEST QA Virement saisi');
     await app.fill('#modal-tx-amount','200');
     await app.selectOption('#modal-tx-compte',compte);

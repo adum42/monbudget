@@ -82,7 +82,7 @@ test('supprimer l\'opération après le relevé fait disparaître la ligne, sans
 test('saisir une opération après le relevé fait apparaître la ligne, sans recharger',async({app,base})=>{
   await demarrer(app,base);
   await onglet(app,'Transactions');
-  await app.getByRole('button',{name:'− Sortie d\'argent'}).click();
+  await app.getByRole('button',{name:'+ Nouvelle opération'}).click();
   await expect(app.locator('#modal-tx-desc')).toBeFocused();
   await app.fill('#modal-tx-desc','TEST QA Café');
   await app.fill('#modal-tx-amount','2.40');

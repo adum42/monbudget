@@ -1,7 +1,7 @@
 // Indicateur « Mouvements de compte » en tête de la liste des transactions (#70), sans connexion.
 // Fausse base (outils.js) : « TEST QA Virement interne » (cv) est cochée « Mouvement de compte »,
 // aucune opération dans cette catégorie au départ ; horloge figée au 04/11/2026 (mois affiché : novembre).
-const {test,expect}=require('./outils');
+const {test,expect,nouvelleOperation}=require('./outils');
 
 const ID_USER='00000000-0000-4000-8000-0000000000a1';
 const MOINS='−';
@@ -14,9 +14,8 @@ async function verifierBadge(page,texte,couleur){
   await expect(indicateur(page)).toHaveText(texte);
   await expect(indicateur(page)).toHaveClass(couleur==='vert'?/badge-ok/:/badge-ko/);
 }
-async function saisir(page,bouton,description,montant,compte){
-  await page.getByRole('button',{name:bouton}).click();
-  await expect(page.locator('#modal-tx-desc')).toBeFocused();
+async function saisir(page,type,description,montant,compte){
+  await nouvelleOperation(page,type);
   await page.fill('#modal-tx-desc',description);
   await page.fill('#modal-tx-amount',montant);
   await page.selectOption('#modal-tx-compte',compte);
@@ -39,10 +38,10 @@ test('départ : catégorie cochée sans opération, badge vert en tête de la li
 
 test('création, modification et suppression : le badge suit sans recharger la page',async({app})=>{
   // Seulement la sortie : rouge à −100,00 €
-  await saisir(app,'− Sortie d\'argent','TEST QA Virement vers livret','100','k1');
+  await saisir(app,'sortie','TEST QA Virement vers livret','100','k1');
   await verifierBadge(app,rouge(MOINS+'100,00 €'),'rouge');
   // L'entrée de 100 € sur le livret : vert à 0,00 €
-  await saisir(app,'+ Entrée d\'argent','TEST QA Virement reçu livret','100','k2');
+  await saisir(app,'entrée','TEST QA Virement reçu livret','100','k2');
   await verifierBadge(app,VERT,'vert');
   // Modification du montant de l'entrée : 90 € -> rouge à −10,00 €
   await app.locator('.tx-item',{hasText:'TEST QA Virement reçu livret'}).click();
