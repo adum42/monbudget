@@ -3,20 +3,21 @@
 // elles se ferment toujours par « Annuler » / « Fermer », la croix ✕ et Échap.
 const {test,expect}=require('./outils');
 
+// champ : celui qu'on remplit ; focus : celui qui reçoit le focus automatique à l'ouverture.
 const MODALES=[
-  {nom:'transaction',id:'tx-modal',champ:'#modal-tx-desc',annuler:'Annuler',
+  {nom:'transaction',id:'tx-modal',champ:'#modal-tx-desc',focus:'#modal-tx-desc',annuler:'Annuler',
     ouvrir:page=>page.getByRole('button',{name:'+ Nouvelle opération'}).click()},
-  {nom:'catégorie',id:'cat-modal',champ:'#modal-cat-nom',annuler:'Annuler',
+  {nom:'catégorie',id:'cat-modal',champ:'#modal-cat-nom',focus:'#modal-cat-nom',annuler:'Annuler',
     ouvrir:async page=>{
       await page.getByRole('button',{name:'Catégories',exact:true}).click();
       await page.getByRole('button',{name:'+ Nouvelle catégorie'}).click();
     }},
-  {nom:'compte',id:'compte-modal',champ:'#modal-c-nom',annuler:'Annuler',
+  {nom:'compte',id:'compte-modal',champ:'#modal-c-nom',focus:'#modal-c-nom',annuler:'Annuler',
     ouvrir:async page=>{
       await page.getByRole('button',{name:'Comptes',exact:true}).click();
       await page.getByRole('button',{name:'+ Nouveau compte'}).click();
     }},
-  {nom:'solde',id:'solde-modal',champ:'#modal-solde-note',annuler:'Fermer',
+  {nom:'solde',id:'solde-modal',champ:'#modal-solde-note',focus:'#modal-solde-montant',annuler:'Fermer',
     ouvrir:async page=>{
       await page.getByRole('button',{name:'Comptes',exact:true}).click();
       await page.locator('.compte-card',{hasText:'TEST QA Compte courant'}).locator('[data-solde-compte-id]').click();
@@ -28,7 +29,9 @@ const modale=(page,m)=>page.locator('#'+m.id);
 async function ouvrir(page,m){
   await m.ouvrir(page);
   await expect(modale(page,m)).toHaveClass(/open/);
-  await page.waitForTimeout(150);   // laisse passer le focus automatique (100 ms après l'ouverture)
+  // Le focus automatique arrive 100 ms après l'ouverture : on attend qu'il soit posé (un état)
+  // plutôt qu'une durée fixe, avant toute saisie (#89).
+  await expect(page.locator(m.focus)).toBeFocused();
 }
 
 // Clic sur le fond sombre, dans la marge de 24 px autour de la fenêtre : c'est bien le fond qui reçoit le clic.
