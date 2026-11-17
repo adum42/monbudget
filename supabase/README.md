@@ -77,6 +77,7 @@ Le projet test a été créé vide le 29/10/2026 (#19), aligné sur la prod d'al
 | 6 | `vue_soldes_comptes` | `supabase/migrations/202611031145_vue_soldes_comptes.sql` | #5 : appliquée sur test puis sur prod le 03/11/2026, inscrite avec la version `202611031145` sur les deux bases |
 | 7 | `mouvement_de_compte` | `supabase/migrations/202611161145_mouvement_de_compte.sql` | #68 : appliquée sur test puis sur prod le 16/11/2026, version `202611161145` sur les deux bases |
 | 8 | `controle_appartenance` | `supabase/migrations/202611161500_controle_appartenance.sql` | #24 : appliquée sur test puis sur prod le 16/11/2026, version `202611161500` sur les deux bases |
+| 9 | `supprimer_compte_dest_id` | `supabase/migrations/202611171330_supprimer_compte_dest_id.sql` | #86 : appliquée sur test puis sur prod le 17/11/2026, version `202611171330` sur les deux bases |
 
 Le schéma `backup_v1` n'est volontairement pas reproduit sur test.
 
@@ -92,7 +93,8 @@ Requête versionnée : [`supabase/empreinte_public.sql`](empreinte_public.sql). 
 
 | Date | Après | `TOTAL_public` (TEST = PROD) | Objets | Requête |
 |---|---|---|---|---|
-| 16/11/2026 | #24 | `afc7d7d14fb4effbe9aef1e34b3aa2c9` | 241 | `empreinte_public.sql` (référence pour les prochaines comparaisons ; relevée par Quentin, seule la famille `schemas` diffère) |
+| 17/11/2026 | #86 | `53d9f5ed32fde45ca02c936a5fca8146` | 236 | `empreinte_public.sql` (référence pour les prochaines comparaisons ; relevée par Sylvie et Quentin, seule la famille `schemas` diffère) |
+| 16/11/2026 | #24 | `afc7d7d14fb4effbe9aef1e34b3aa2c9` | 241 | `empreinte_public.sql` (relevée par Quentin, seule la famille `schemas` diffère) |
 | 03/11/2026 | #5 | `f4838e4be7525645aad5f0b450a43d2b` | 233 | `empreinte_public.sql` |
 | 03/11/2026 | #5 | `f93b32579316a470ebbd3e28b0718402` | 233 | requête de recette de Quentin, non versionnée, non reproductible à l'identique |
 | 02/11/2026 | #3 | `25d70b76f63c7462e37df3dfd80b865c` | 189 | ancienne requête, sans la famille `def_vues` |
