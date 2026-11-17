@@ -595,7 +595,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       </div>
       <div class="comptes-grid" id="comptes-cards"></div>
       <div class="card">
-        <div class="card-title">Évolution du patrimoine — 12 mois</div>
+        <div class="card-title">Évolution des soldes banque — 12 mois</div>
         <div class="chart-wrap-tall"><canvas id="chart-comptes"></canvas></div>
       </div>
     </div>
@@ -2313,7 +2313,7 @@ function renderChartComptes(){
       comptes.forEach(c=>{const k=soldes.filter(s=>s.compte_id===c.id&&s.date<=d).sort((a,b)=>b.date.localeCompare(a.date));if(k.length){t+=k[0].montant;h=true;}});
       return h?{x:d,y:t}:{x:d,y:null};
     });
-    datasets.push({label:'Total patrimoine',data:totalData,borderColor:'#F0F0F2',backgroundColor:'transparent',tension:.3,borderDash:[5,5],pointRadius:3});
+    datasets.push({label:'Total des relevés',data:totalData,borderColor:'#F0F0F2',backgroundColor:'transparent',tension:.3,borderDash:[5,5],pointRadius:3});
   }
   if(chartComptes) chartComptes.destroy();
   chartComptes=new Chart(document.getElementById('chart-comptes'),{
