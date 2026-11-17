@@ -108,6 +108,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .cat-mvt-compte{font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .modal-info{padding:10px 12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:13px;line-height:1.4;}
 .tx-compte{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pastille-compte{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex-shrink:0;}
 .badge-tricount{background:rgba(245,158,11,0.15);color:#F59E0B;}
 .badge-tricount-ok{background:rgba(34,201,122,0.15);color:var(--green);}
 .tricount-toggle{display:flex;gap:6px;}
@@ -1408,6 +1409,20 @@ function messageSuppressionSolde(releve){
 }
 // ══ FIN FONCTIONS PURES SOLDES BANQUE (#55) ═══════════
 
+// ══ DÉBUT FONCTIONS PURES PASTILLE COMPTE (#76) ═══════
+// Sans DOM ni Supabase : testables directement (tests/front/ticket76_pastille_compte.test.js).
+// Utilise couleurCompte (bloc #8) : la couleur n'entre jamais dans la page sans cette validation.
+
+// Pastille d'une transaction dans la liste : {libelle, couleur}, ou null pour une transaction sans compte.
+// Le libellé vient de libelleCompteTx (bloc #6) : « ? » si le compte est introuvable, avec la couleur par défaut.
+function pastilleCompteTx(tx,listeComptes){
+  const libelle=libelleCompteTx(tx||{},listeComptes);
+  if(!libelle) return null;
+  const c=(listeComptes||[]).find(x=>x.id===tx.compte_id);
+  return {libelle,couleur:couleurCompte(c)};
+}
+// ══ FIN FONCTIONS PURES PASTILLE COMPTE (#76) ═════════
+
 // ── MODAL COMPTE ──────────────────────────────────────
 let editingCompteId=null;
 let saveCompteEnCours=false;
@@ -1820,8 +1835,8 @@ function renderTransactions(){
     const isEntree=t.type==='entrée';
     const amountColor=isEntree?'green':'red';
     const amountSign=isEntree?'+':'-';
-    const libCompte=libelleCompteTx(t,comptes);
-    const compteHtml=libCompte?`<span class="tx-compte">🏦 ${esc(libCompte)}</span>`:'';
+    const pastille=pastilleCompteTx(t,comptes);
+    const compteHtml=pastille?`<span class="tx-compte"><span class="pastille-compte" aria-hidden="true" style="background:${pastille.couleur}"></span>${esc(pastille.libelle)}</span>`:'';
     const meta=`${esc(t.date)}${t.categories?' · '+esc(t.categories.emoji||'📁')+' '+esc(t.categories.nom):''}`;
     const noteHtml=t.note?`<span class="tx-note">${esc(t.note)}</span>`:'';
     const tc=t.tricount||'non';
