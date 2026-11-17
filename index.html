@@ -265,6 +265,14 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .type-btn{flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;}
 .type-btn.active-in{background:var(--green-soft);border-color:var(--green);color:var(--green);}
 .type-btn.active-out{background:var(--red-soft);border-color:var(--red);color:var(--red);}
+/* Modale transaction colorée selon le type (#73) : classe type-sortie / type-entree sur #tx-modal */
+.montant-signe{display:flex;align-items:center;gap:6px;}
+.montant-signe input{flex:1;min-width:0;}
+.montant-signe .signe{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;min-width:12px;text-align:center;}
+#tx-modal.type-sortie .montant-signe .signe,#tx-modal.type-sortie #modal-tx-amount{color:var(--red);}
+#tx-modal.type-entree .montant-signe .signe,#tx-modal.type-entree #modal-tx-amount{color:var(--green);}
+#tx-modal.type-sortie #tx-modal-save{background:var(--red);}
+#tx-modal.type-entree #tx-modal-save{background:var(--green);}
 .modal-error{padding:10px 12px;background:var(--red-soft);border:1px solid var(--red);border-radius:var(--radius-sm);color:var(--red);font-size:13px;line-height:1.4;}
 /* Mobile (#6) : boutons de type sur une ligne, pied de modale sur deux lignes si besoin */
 @media (max-width:480px){
@@ -324,16 +332,16 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 <div class="modal-overlay" id="tx-modal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title" id="tx-modal-title">Nouvelle transaction</div>
+      <div class="modal-title" id="tx-modal-title">− Nouvelle sortie</div>
       <button class="modal-close" onclick="closeTxModal()">✕</button>
     </div>
     <div class="modal-body">
       <div class="modal-error" id="tx-modal-error" role="alert" style="display:none"></div>
-      <div class="modal-field" id="tx-type-toggle-row" style="display:none">
+      <div class="modal-field" id="tx-type-toggle-row">
         <label>Type</label>
         <div class="type-toggle">
-          <button class="type-btn active-in" id="btn-type-in" onclick="setTxType('entrée')">+ Entrée</button>
-          <button class="type-btn" id="btn-type-out" onclick="setTxType('sortie')">− Sortie</button>
+          <button type="button" class="type-btn active-out" id="btn-type-out" aria-pressed="true" onclick="setTxType('sortie')">− Sortie</button>
+          <button type="button" class="type-btn" id="btn-type-in" aria-pressed="false" onclick="setTxType('entrée')">+ Entrée</button>
         </div>
       </div>
       <div class="modal-field">
@@ -342,8 +350,11 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       </div>
       <div class="modal-row">
         <div class="modal-field">
-          <label>Montant (€)</label>
-          <input type="number" id="modal-tx-amount" placeholder="0.00" step="0.01" min="0">
+          <label for="modal-tx-amount">Montant (€)</label>
+          <div class="montant-signe">
+            <span class="signe" id="tx-montant-signe" aria-hidden="true">−</span>
+            <input type="number" id="modal-tx-amount" placeholder="0.00" step="0.01" min="0">
+          </div>
         </div>
         <div class="modal-field">
           <label>Date</label>
@@ -383,7 +394,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
       <button class="btn-danger" id="tx-modal-delete" style="display:none" onclick="askDeleteTx()">Supprimer</button>
       <button class="btn-dup" id="tx-modal-dup" style="display:none" onclick="dupTx()">Dupliquer</button>
       <button class="btn-cancel" onclick="closeTxModal()">Annuler</button>
-      <button class="btn-confirm" onclick="saveTx()">Enregistrer</button>
+      <button class="btn-confirm" id="tx-modal-save" onclick="saveTx()">Enregistrer la sortie</button>
     </div>
   </div>
 </div>
@@ -509,8 +520,7 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
     <!-- TRANSACTIONS -->
     <div class="section active" id="tab-transactions">
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;flex-wrap:wrap;">
-        <button class="btn-add" style="background:var(--green);" data-saisie onclick="openTxModal(null,'entrée')">+ Entrée d'argent</button>
-        <button class="btn-add" style="background:var(--red);" data-saisie onclick="openTxModal(null,'sortie')">− Sortie d'argent</button>
+        <button class="btn-add" id="btn-nouvelle-tx" data-saisie onclick="openTxModal(null)">+ Nouvelle opération</button>
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -838,14 +848,37 @@ function dateLocaleISO(d=new Date()){
 }
 
 // ── MODAL TX ──────────────────────────────────────────
+
+// ══ DÉBUT FONCTIONS PURES MODALE TRANSACTION (#73) ═══
+// Sans DOM ni Supabase : testables directement (tests/front/ticket73_modale_tx.test.js).
+// Une nouvelle opération part toujours sur Sortie (bouton « + Nouvelle opération » et touche N).
+const TYPE_NOUVELLE_TX='sortie';
+// Apparence de la modale selon le type et le mode ('nouveau' | 'duplication' | 'edition').
+// Le signe est seulement visuel : le montant enregistré reste positif, le sens vient de `type`.
+// Tout type autre que 'entrée' est présenté comme une sortie.
+function apparenceModaleTx(type,mode){
+  const entree=type==='entrée';
+  const signe=entree?'+':'−';
+  const creation=mode!=='edition';
+  const libelle=creation
+    ?(entree?'Nouvelle entrée':'Nouvelle sortie')
+    :(entree?'Modifier l\'entrée':'Modifier la sortie');
+  return {
+    type:entree?'entrée':'sortie',
+    classe:entree?'type-entree':'type-sortie',
+    signe,
+    couleur:entree?'var(--green)':'var(--red)',
+    titre:signe+' '+libelle,
+    enregistrer:entree?'Enregistrer l\'entrée':'Enregistrer la sortie'
+  };
+}
+// ══ FIN FONCTIONS PURES MODALE TRANSACTION (#73) ═════
+
 let editingTxId=null;
-let currentTxType='entrée';
+let currentTxType=TYPE_NOUVELLE_TX;
+let modeTxModal='nouveau'; // 'nouveau' | 'duplication' | 'edition' (#73)
 let txSansCompteAutorise=false; // modification d'une ancienne transaction sans compte
 let saveTxEnCours=false;
-const TITRES_TX={
-  'entrée':{texte:'➕ Entrée d\'argent',couleur:'var(--green)'},
-  'sortie':{texte:'➖ Sortie d\'argent',couleur:'var(--red)'}
-};
 
 function optionsComptes(premier){
   return `<option value="">${premier}</option>`+comptes.map(c=>`<option value="${esc(c.id)}">${esc(c.nom)}</option>`).join('');
@@ -868,15 +901,12 @@ function openTxModal(tx, defaultType){
 function ouvrirModaleTx(tx,mode,defaultType){
   editingTxId=mode==='edition'?tx.id:null;
   deleteConfirmPending=false;
-  currentTxType=tx?tx.type:(defaultType||'entrée');
-  const titre=document.getElementById('tx-modal-title');
-  if(mode==='edition'){titre.textContent='Modifier la transaction';titre.style.color='var(--text)';}
-  else{const t=TITRES_TX[currentTxType]||TITRES_TX['entrée'];titre.textContent=t.texte;titre.style.color=t.couleur;}
+  modeTxModal=mode;
+  currentTxType=tx?tx.type:(defaultType||TYPE_NOUVELLE_TX);
   document.getElementById('modal-tx-desc').value=tx?tx.description:'';
   document.getElementById('modal-tx-amount').value=tx?tx.montant:'';
   document.getElementById('modal-tx-date').value=(tx&&mode==='edition')?tx.date:dateLocaleISO();
   document.getElementById('modal-tx-note').value=tx?tx.note||'':'';
-  document.getElementById('tx-type-toggle-row').style.display=mode==='edition'?'flex':'none';
   txSansCompteAutorise=mode==='edition'&&!tx.compte_id;
   const defaut=compteParDefaut(comptes);
   const compteId=tx?(tx.compte_id||(txSansCompteAutorise?'':defaut)):defaut;
@@ -904,11 +934,30 @@ function resetDeleteConfirm(){
     document.getElementById('tx-modal-delete').style.display='block';
     document.getElementById('tx-modal-dup').style.display='block';
   }
+  majApparenceTx();
 }
+// Change le type sans toucher aux champs déjà saisis (#73).
 function setTxType(type){
   currentTxType=type;
-  document.getElementById('btn-type-in').className='type-btn'+(type==='entrée'?' active-in':'');
-  document.getElementById('btn-type-out').className='type-btn'+(type==='sortie'?' active-out':'');
+  const entree=type==='entrée';
+  const btnIn=document.getElementById('btn-type-in'),btnOut=document.getElementById('btn-type-out');
+  btnIn.className='type-btn'+(entree?' active-in':'');
+  btnOut.className='type-btn'+(!entree?' active-out':'');
+  btnIn.setAttribute('aria-pressed',String(entree));
+  btnOut.setAttribute('aria-pressed',String(!entree));
+  majApparenceTx();
+}
+// Titre, signe et couleur du montant, libellé et couleur du bouton d'enregistrement (#73).
+function majApparenceTx(){
+  const a=apparenceModaleTx(currentTxType,modeTxModal);
+  const modale=document.getElementById('tx-modal');
+  modale.classList.remove('type-entree','type-sortie');
+  modale.classList.add(a.classe);
+  const titre=document.getElementById('tx-modal-title');
+  titre.textContent=a.titre;titre.style.color=a.couleur;
+  document.getElementById('tx-montant-signe').textContent=a.signe;
+  const bouton=document.getElementById('tx-modal-save');
+  if(bouton) bouton.textContent=a.enregistrer;
 }
 function setTricount(val){
   currentTricount=val;
@@ -2103,7 +2152,7 @@ document.addEventListener('keydown',function(e){
     // Ouvrir nouvelle transaction si aucune modale ouverte
     const anyOpen=[...document.querySelectorAll('.modal-overlay.open')].length>0;
     if(raccourciNouvelleTxPossible({connecte:!!currentUser,ongletTransactions:document.getElementById('tab-transactions').classList.contains('active'),modaleOuverte:anyOpen,chargementsEnCours})){
-      openTxModal(null,'sortie');
+      openTxModal(null);   // toujours sur Sortie (#73)
     }
   }
 });

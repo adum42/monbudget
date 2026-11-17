@@ -1,14 +1,9 @@
 // Parcours clés sur les transactions, sans connexion (#9) : Supabase simulé en mémoire.
 // Chaque test repart d'une fausse base neuve (voir donneesInitiales dans outils.js).
-const {test,expect}=require('./outils');
+const {test,expect,nouvelleOperation}=require('./outils');
 
-// Ouvre la modale « Sortie d'argent » et attend le focus automatique sur la description,
-// posé 100 ms après l'ouverture : remplir avant ferait perdre la saisie (piège vu sur #8).
-async function ouvrirNouvelleSortie(page){
-  await page.getByRole('button',{name:'− Sortie d\'argent'}).click();
-  await expect(page.locator('#tx-modal')).toHaveClass(/open/);
-  await expect(page.locator('#modal-tx-desc')).toBeFocused();
-}
+// « + Nouvelle opération » ouvre la modale sur Sortie (#73), focus de la description attendu.
+const ouvrirNouvelleSortie=page=>nouvelleOperation(page,'sortie');
 
 test('créer puis supprimer une transaction',async({app,base})=>{
   // 1. Création
@@ -33,7 +28,7 @@ test('créer puis supprimer une transaction',async({app,base})=>{
 
   // 2. Suppression en deux temps : « Supprimer » puis « Confirmer la suppression »
   await ligne.click();
-  await expect(app.locator('#tx-modal-title')).toHaveText('Modifier la transaction');
+  await expect(app.locator('#tx-modal-title')).toHaveText('− Modifier la sortie');
   await app.click('#tx-modal-delete');
   await app.getByRole('button',{name:'Confirmer la suppression'}).click();
 

@@ -262,4 +262,14 @@ const test=base.test.extend({
   },
 });
 
-module.exports={test,expect,TEST,PROD,HEURE_FIGEE,UTILISATEUR,CDN,verifierEnvironnementTest};
+// Ouvre « + Nouvelle opération » (#73) : la modale part toujours sur Sortie ; avec type 'entrée',
+// bascule ensuite sur « + Entrée ». Attend le focus automatique de la description (100 ms après
+// l'ouverture) avant de rendre la main, sinon une saisie trop rapide serait perdue (piège vu sur #8).
+async function nouvelleOperation(page,type='sortie'){
+  await page.getByRole('button',{name:'+ Nouvelle opération'}).click();
+  await expect(page.locator('#tx-modal')).toHaveClass(/open/);
+  await expect(page.locator('#modal-tx-desc')).toBeFocused();
+  if(type==='entrée') await page.click('#btn-type-in');
+}
+
+module.exports={test,expect,TEST,PROD,HEURE_FIGEE,UTILISATEUR,CDN,verifierEnvironnementTest,nouvelleOperation};
