@@ -104,8 +104,6 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .tx-amount.red{color:var(--red);}
 .btn-confirm:disabled{opacity:.5;cursor:wait;}
 .badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:500;}
-.badge-in{background:var(--green-soft);color:var(--green);}
-.badge-out{background:var(--red-soft);color:var(--red);}
 .cat-texte{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .cat-mvt-compte{font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .modal-info{padding:10px 12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:13px;line-height:1.4;}
@@ -120,7 +118,6 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .btn-tricount-validate{padding:3px 8px;border-radius:var(--radius-sm);border:1px solid rgba(245,158,11,0.35);background:transparent;color:rgba(245,158,11,0.6);cursor:pointer;font-size:10px;font-weight:400;white-space:nowrap;transition:all .15s;}
 .btn-tricount-validate:hover{border-color:#F59E0B;color:#F59E0B;background:rgba(245,158,11,0.08);}
 .btn-tricount-done{padding:3px 8px;border-radius:var(--radius-sm);border:1px solid rgba(34,201,122,0.3);background:transparent;color:rgba(34,201,122,0.5);font-size:10px;font-weight:400;white-space:nowrap;cursor:default;}
-.btn-tricount-non{padding:3px 8px;border-radius:var(--radius-sm);border:1px solid rgba(240,82,82,0.25);background:transparent;color:rgba(240,82,82,0.4);font-size:10px;font-weight:400;white-space:nowrap;cursor:default;}
 .epingle-toggle{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;user-select:none;}
 .epingle-toggle:hover{border-color:rgba(255,255,255,.15);}
 .epingle-toggle input[type="checkbox"]{display:none;}
@@ -1774,8 +1771,6 @@ function renderTransactions(){
     const isEntree=t.type==='entrée';
     const amountColor=isEntree?'green':'red';
     const amountSign=isEntree?'+':'-';
-    const badgeClass=isEntree?'badge-in':'badge-out';
-    const badgeLabel=isEntree?'Entrée':'Sortie';
     const libCompte=libelleCompteTx(t,comptes);
     const compteHtml=libCompte?`<span class="tx-compte">🏦 ${esc(libCompte)}</span>`:'';
     const meta=`${esc(t.date)}${t.categories?' · '+esc(t.categories.emoji||'📁')+' '+esc(t.categories.nom):''}`;
@@ -1785,7 +1780,7 @@ function renderTransactions(){
       ?`<button class="btn-tricount-validate" data-tc-id="${esc(t.id)}">Valider Tricount</button>`
       :tc==='oui validé'
       ?`<span class="btn-tricount-done">✅ Validé</span>`
-      :`<span class="btn-tricount-non">Hors Tricount</span>`;
+      :''; // hors Tricount (#74) : aucune mention
     const pinSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>`;
     const pinIcon=t.epingle
       ?`<span class="pin-icon" data-pin-id="${esc(t.id)}" data-pin-val="1" title="Épinglé — cliquer pour désépingler" style="cursor:pointer;">${pinSvg}</span>`
@@ -1801,7 +1796,6 @@ function renderTransactions(){
       <div class="tx-right">
         ${tcBtn}
         <span class="tx-amount ${amountColor}">${amountSign}${fmt(t.montant)} €</span>
-        <span class="badge ${badgeClass}">${badgeLabel}</span>
       </div>
     </div>`;
   }).join('');

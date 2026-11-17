@@ -50,10 +50,12 @@ test('plus aucun moyen de créer ni de filtrer un mouvement',async({app})=>{
 
 test('virement interne : visible dans la liste, absent des totaux, KPIs, graphiques et top 5, présent dans les soldes',async({app,base})=>{
   await ajouterVirement(app,base);
-  // Liste : les deux opérations, avec leur compte et leur badge habituel
+  // Liste : les deux opérations, avec leur compte et leur montant signé (plus de badge de type depuis #74)
   const lignes=app.locator('.tx-item',{hasText:'TEST QA Virement livret'});
-  await expect(lignes.filter({hasText:COURANT}).locator('.badge')).toHaveText('Sortie');
-  await expect(lignes.filter({hasText:LIVRET}).locator('.badge')).toHaveText('Entrée');
+  await expect(lignes.filter({hasText:COURANT}).locator('.tx-amount')).toHaveClass(/\bred\b/);
+  await expect(lignes.filter({hasText:COURANT}).locator('.tx-amount')).toHaveText(/^-/);
+  await expect(lignes.filter({hasText:LIVRET}).locator('.tx-amount')).toHaveClass(/\bgreen\b/);
+  await expect(lignes.filter({hasText:LIVRET}).locator('.tx-amount')).toHaveText(/^\+/);
   await expect(lignes.first().locator('.tx-meta')).toContainText('TEST QA Virement interne');
   // Le filtre par catégorie les retrouve toujours
   await app.selectOption('#f-cat','cv');
