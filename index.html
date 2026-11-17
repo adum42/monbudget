@@ -308,6 +308,21 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
 .emoji-opt{font-size:22px;padding:6px;border:1px solid transparent;border-radius:8px;cursor:pointer;background:transparent;text-align:center;}
 .emoji-opt:hover{background:var(--surface2);}
 .emoji-opt.selected{background:var(--accent-soft);border-color:var(--accent);}
+.emoji-aucun{font-size:13px;color:var(--muted);text-align:center;padding:12px 0;}
+/* Saisie libre d'un emoji (#78) */
+.emoji-libre-row{display:flex;align-items:center;gap:8px;}
+.emoji-libre-row label{font-size:12px;color:var(--muted);white-space:nowrap;}
+.emoji-libre-input{flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:16px;outline:none;}
+.emoji-libre-input:focus{border-color:var(--accent);}
+.emoji-libre-input[aria-invalid="true"]{border-color:var(--red);}
+.emoji-libre-erreur{font-size:12px;color:var(--red);line-height:1.4;}
+/* 16 groupes (#78) : à 390 px, une seule ligne de groupes qui défile dans la fenêtre */
+@media (max-width:480px){
+  .emoji-cats-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;}
+  .emoji-cat-btn{flex:0 0 auto;white-space:nowrap;}
+  .emoji-grid{grid-template-columns:repeat(7,minmax(0,1fr));}
+  .emoji-opt{padding:4px 0;min-width:0;}
+}
 </style>
 </head>
 <body>
@@ -428,9 +443,15 @@ main{flex:1;padding:24px;max-width:960px;width:100%;margin:0 auto;}
           <div style="font-size:12px;color:var(--muted)">Émoji sélectionné</div>
         </div>
       </div>
-      <input class="emoji-search-input" id="emoji-search" placeholder="🔍  Rechercher..." oninput="filterEmojis()">
+      <input class="emoji-search-input" id="emoji-search" placeholder="🔍  Rechercher (ex : courses, élec, santé)" aria-label="Rechercher un emoji" autocomplete="off" oninput="filterEmojis()">
       <div class="emoji-cats-row" id="emoji-cats"></div>
       <div class="emoji-grid" id="emoji-grid"></div>
+      <div class="emoji-aucun" id="emoji-aucun" role="status" style="display:none">Aucun emoji trouvé</div>
+      <div class="emoji-libre-row">
+        <label for="emoji-libre">Ou colle un emoji</label>
+        <input class="emoji-libre-input" id="emoji-libre" autocomplete="off" aria-describedby="emoji-libre-erreur" oninput="saisirEmojiLibre()">
+      </div>
+      <div class="emoji-libre-erreur" id="emoji-libre-erreur" role="alert" style="display:none"></div>
       <label class="epingle-toggle" for="modal-cat-mvt">
         <input type="checkbox" id="modal-cat-mvt" onchange="majInfoMouvementCompte()">
         <span class="epingle-track" style="white-space:nowrap;flex:0 0 auto;">⇄ Mouvement de compte</span>
@@ -636,46 +657,204 @@ let erreurChargementComptes=null;
 let chargementsEnCours=0;       // chargements loadAll() en cours (#58)
 
 // ── EMOJI ─────────────────────────────────────────────
+// ══ DÉBUT FONCTIONS PURES EMOJIS (#78) ═══════════════
+// Catalogue : groupe -> [emoji, mots-clés en français]. Unicode 13 ou antérieur, sans doublon entre groupes.
 const EMOJI_CATS={
-  '🏠 Quotidien':['🛒','🍽️','🍕','🍔','☕','🛍️','🏠','🔧','💡','🚿','🛋️','🧹','🌿','🐾','👶','💊','🏥','💇','💅','🧴'],
-  '🚗 Transport':['🚗','🚌','✈️','🚂','🚲','⛽','🅿️','🚕','🛵','⛵'],
-  '💰 Finances':['💰','💳','🏦','📈','📉','💸','🪙','💎','🏆','🎯'],
-  '🎮 Loisirs':['🎮','🎬','🎵','🎸','📚','🏋️','⚽','🎾','🎨','🎭','🎪','🎲','♟️','🧩','🎤'],
-  '👕 Shopping':['👕','👗','👟','👜','💄','🕶️','⌚','📱','💻','📷'],
-  '✈️ Voyages':['✈️','🏖️','🏔️','🗺️','🏨','🎡','🗼','🗽','🏯','🌅'],
-  '💼 Pro':['💼','📊','📋','🖥️','📞','📧','✏️','📌','🗂️','🤝'],
-  '🎁 Autres':['🎁','🎉','🎂','💝','🌟','⭐','🔥','💫','✨','🌈','🍀','🦋','🌸','🦁','🐬'],
+  '🏠 Quotidien':[
+    ['🛒','courses supermarché caddie'],['🍽️','restaurant resto repas'],['🍕','pizza fastfood'],['🍔','burger fastfood'],
+    ['☕','café'],['🛍️','shopping achats'],['🏠','maison logement loyer'],['🔧','réparation outil bricolage'],
+    ['💡','électricité lumière ampoule'],['🚿','douche eau bain'],['🛋️','meuble canapé salon'],['🧹','ménage nettoyage balai'],
+    ['🌿','plante jardin nature'],['🐾','animaux pattes'],['👶','bébé enfant'],['💊','médicament pharmacie santé'],
+    ['🏥','hôpital santé clinique'],['💇','coiffeur cheveux'],['💅','manucure beauté ongles'],['🧴','hygiène crème soin'],
+  ],
+  '🚗 Transport':[
+    ['🚗','voiture auto'],['🚌','bus car transport'],['✈️','avion vol voyage'],['🚂','train sncf'],
+    ['🚲','vélo'],['⛽','essence carburant plein'],['🅿️','parking stationnement'],['🚕','taxi vtc'],
+    ['🛵','scooter'],['⛵','bateau voile'],
+    ['🚆','tgv train ter'],['🚇','métro'],['🚊','tram tramway'],['🛴','trottinette'],['🏍️','moto'],
+    ['🚐','van camping-car'],['🛣️','autoroute péage'],['🔋','batterie recharge électrique'],['🚙','4x4 suv voiture'],['🚦','permis code route'],
+  ],
+  '💰 Finances':[
+    ['💰','argent épargne'],['💳','carte bancaire paiement cb'],['🏦','banque'],['📈','investissement bourse hausse'],
+    ['📉','baisse perte'],['💸','dépense frais'],['🪙','pièce monnaie bitcoin crypto'],['💎','bijou luxe diamant'],
+    ['🏆','prime récompense trophée'],['🎯','objectif cible'],
+    ['🐷','tirelire cochon épargne'],['💶','euro billets espèces'],['💵','dollar liquide'],['🏧','distributeur retrait'],
+    ['🧧','enveloppe étrennes'],['💹','placement rendement'],['🤑','gain loto'],
+  ],
+  '🎮 Loisirs':[
+    ['🎮','jeu vidéo console'],['🎬','cinéma film'],['🎵','musique'],['🎸','guitare concert'],['📚','livre lecture librairie'],
+    ['🏋️','sport salle musculation'],['⚽','football foot'],['🎾','tennis'],['🎨','art peinture dessin'],['🎭','théâtre spectacle'],
+    ['🎪','cirque sortie'],['🎲','jeu société dés'],['♟️','échecs'],['🧩','puzzle'],['🎤','karaoké chant'],
+    ['🏊','piscine natation'],['🎳','bowling'],['⛳','golf'],['🎿','ski station'],['🧗','escalade'],
+    ['🏀','basket'],['🎻','violon instrument'],['📸','photographie'],['🎣','pêche'],['🏕️','camping'],
+  ],
+  '👕 Shopping':[
+    ['👕','vêtements habits tshirt'],['👗','robe vêtements'],['👟','chaussures baskets'],['👜','sac maroquinerie'],
+    ['💄','maquillage beauté'],['🕶️','lunettes soleil'],['⌚','montre'],['📱','téléphone mobile forfait'],
+    ['💻','ordinateur informatique'],['📷','appareil photo'],
+    ['🧥','manteau veste'],['👖','jean pantalon'],['🩳','short'],['👙','maillot bain'],['🧦','chaussettes'],
+    ['👠','talons escarpins'],['🧢','casquette'],['💍','bague bijouterie'],['🎧','casque écouteurs audio'],['🖱️','souris accessoires'],
+  ],
+  '✈️ Voyages':[
+    ['🧳','valise bagage voyage'],['🏖️','plage vacances'],['🏔️','montagne'],['🗺️','carte itinéraire'],['🏨','hôtel'],
+    ['🎡','parc attraction manège'],['🗼','tour paris'],['🗽','new york usa'],['🏯','château japon'],['🌅','coucher soleil'],
+    ['🛳️','croisière paquebot'],['🏝️','île tropiques'],['🛂','passeport douane visa'],['🚠','téléphérique'],['🖼️','musée exposition'],
+  ],
+  '💼 Pro':[
+    ['💼','travail salaire boulot'],['📊','graphique statistiques'],['📋','liste presse-papiers'],['🖥️','écran bureau'],
+    ['📞','appel téléphone fixe'],['📧','email courriel'],['✏️','crayon fournitures'],['📌','punaise'],
+    ['🗂️','dossiers classement'],['🤝','accord partenariat client'],
+    ['🏢','entreprise bureaux société'],['🧑‍💻','freelance télétravail'],['🖨️','imprimante encre'],['📅','agenda calendrier'],['🎫','ticket restaurant tickets'],
+  ],
+  '🎁 Autres':[
+    ['🎁','cadeau'],['🎉','fête soirée'],['🎂','anniversaire gâteau'],['💝','cadeau amour'],['🌟','étoile brillante'],
+    ['⭐','étoile favori'],['🔥','feu chauffage'],['💫','vertige'],['✨','paillettes divers'],['🌈','arc-en-ciel'],
+    ['🍀','chance trèfle'],['🦋','papillon'],['🌸','fleur cerisier'],['🦁','lion'],['🐬','dauphin'],
+    ['❤️','coeur don'],['🙏','dons charité association'],['❓','divers autre inconnu'],
+  ],
+  '🧾 Maison & factures':[
+    ['⚡','électricité énergie edf'],['💧','eau'],['📶','internet wifi box'],['🧾','facture reçu ticket'],
+    ['🔑','clé location'],['🛏️','lit chambre literie'],['🏡','maison jardin'],['🏘️','immobilier quartier'],
+    ['🧺','linge lessive laverie'],['🧽','éponge entretien'],['🪑','chaise mobilier'],['🚪','porte'],
+    ['🛠️','travaux outils'],['🔨','bricolage marteau'],['🪚','scie menuiserie'],['🔒','sécurité alarme serrure'],
+    ['🗑️','poubelle déchets ordures'],['📦','colis livraison déménagement'],['🧱','construction maçonnerie'],['🪴','plante intérieur'],
+    ['♨️','chauffage gaz'],['❄️','climatisation froid'],
+  ],
+  '🥖 Alimentation':[
+    ['🥖','pain boulangerie baguette'],['🥐','croissant viennoiserie'],['🥗','salade'],['🍷','vin cave'],['🍺','bière bar'],
+    ['🍰','gâteau pâtisserie dessert'],['🍣','sushi japonais'],['🥩','viande boucherie'],['🍗','poulet volaille'],['🦐','crevette poissonnerie'],
+    ['🧀','fromage fromagerie'],['🥚','oeufs'],['🍎','fruits pomme primeur'],['🥕','légumes carotte'],['🍝','pâtes italien'],
+    ['🍜','ramen nouilles asiatique'],['🌮','tacos mexicain'],['🥡','traiteur emporter'],['🍦','glace'],['🍫','chocolat'],
+    ['🥤','boisson soda'],['🧃','jus brique'],['🍾','champagne'],['🍞','pain mie'],['🥘','plat cuisine'],
+  ],
+  '🩺 Santé':[
+    ['🦷','dentiste dent'],['👓','lunettes opticien vue'],['🩺','médecin docteur consultation'],['💉','vaccin piqûre prise sang'],
+    ['🧘','yoga méditation bien-être'],['🩹','pansement soin'],['🌡️','fièvre thermomètre'],['🧠','psy psychologue'],
+    ['🏃','course running'],['🚴','cyclisme'],['🧖','spa sauna'],['💆','massage kiné'],
+    ['👂','audition orl'],['🩸','sang don'],['🧬','analyses laboratoire labo'],['🤧','rhume'],
+  ],
+  '📺 Abonnements':[
+    ['📺','télé streaming netflix'],['🎟️','billet place concert'],['☁️','cloud stockage'],['📰','journal presse'],
+    ['📡','satellite antenne'],['📻','radio'],['💿','cd album'],['📀','dvd'],
+    ['🔔','notification alerte'],['🔁','récurrent abonnement mensuel'],['📲','appli application'],['🗞️','magazine'],
+    ['🎶','spotify deezer playlist'],['🕹️','arcade gaming'],['🔐','vpn mot de passe'],
+  ],
+  '🎓 Enfants & école':[
+    ['🎓','études diplôme université'],['🧸','jouet doudou peluche'],['🍼','biberon bébé lait'],['🏫','école collège lycée'],
+    ['🎒','cartable rentrée scolaire'],['📏','règle fournitures scolaires'],['🖍️','crayons coloriage'],['🧒','enfant'],
+    ['👧','fille'],['👦','garçon'],['🚸','crèche nounou garde'],['🎈','ballon anniversaire'],
+    ['🪀','yoyo jouet'],['🧮','maths soutien scolaire'],['📓','cahier'],
+  ],
+  '🐶 Animaux':[
+    ['🐶','chien'],['🐱','chat'],['🦴','os croquettes'],['🐟','poisson aquarium'],['🐰','lapin'],['🐹','hamster rongeur'],
+    ['🐦','oiseau'],['🐴','cheval équitation'],['🐢','tortue'],['🐕','chien promenade'],['🐈','chat litière'],['🦜','perroquet'],
+  ],
+  '🏛️ Administratif':[
+    ['⚖️','avocat justice juridique'],['📄','document papier'],['🆔','identité papiers carte'],['📝','formulaire déclaration'],
+    ['🖊️','stylo signature'],['✉️','courrier lettre'],['📮','poste boîte lettres'],['🛡️','assurance protection mutuelle'],
+    ['📑','contrat'],['👮','police amende'],['⚠️','pénalité frais retard'],['🏤','bureau de poste'],['🏛️','impôts taxe administration état'],
+  ],
+  '🎄 Fêtes':[
+    ['🎄','noël sapin'],['🎃','halloween citrouille'],['💐','fleurs bouquet fleuriste'],['🎊','fête confettis'],
+    ['🥂','apéro toast'],['💒','mariage'],['🕯️','bougie'],['🎅','père noël'],
+    ['🐣','pâques'],['🎆','feu artifice nouvel an'],['🎀','noeud emballage'],['🪅','piñata'],
+  ],
 };
+// Texte comparable : sans accents, en minuscules, espaces réduits
+function normaliserRechercheEmoji(texte){
+  return String(texte??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+// Emojis dont les mots-clés correspondent à la recherche : chaque mot cherché doit être
+// le début d'un mot-clé (« elec » trouve « électricité »). Recherche vide -> [].
+function filtrerEmojis(catalogue,requete){
+  const mots=normaliserRechercheEmoji(requete).split(/[\s,;'’\-]+/).filter(Boolean);
+  if(!mots.length) return [];
+  const resultat=[];
+  for(const liste of Object.values(catalogue||{})){
+    for(const [emoji,motsCles] of liste){
+      const cles=normaliserRechercheEmoji(motsCles).split(/[\s\-]+/).filter(Boolean);
+      if(mots.every(m=>cles.some(c=>c.startsWith(m)))&&!resultat.includes(emoji)) resultat.push(emoji);
+    }
+  }
+  return resultat;
+}
+// Découpe en graphèmes (un emoji composé comme 👨‍👩‍👧 = un seul graphème)
+function graphemesEmoji(texte){
+  if(typeof Intl!=='undefined'&&Intl.Segmenter){
+    return [...new Intl.Segmenter('fr',{granularity:'grapheme'}).segment(texte)].map(x=>x.segment);
+  }
+  return texte.match(/\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)*(?:\u200D\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)*)*|[\s\S]/gu)||[];
+}
+// Saisie libre : accepte un seul emoji (un graphème, \p{Extended_Pictographic}, variantes et ZWJ compris).
+// Renvoie {ok:true, emoji} ou {ok:false, message}.
+function validerEmojiLibre(texte){
+  const v=String(texte??'').trim();
+  if(!v) return {ok:false,message:'Colle un emoji.'};
+  const refus={ok:false,message:'Colle un seul emoji, sans texte ni chiffre.'};
+  if(v.length>32) return refus;
+  if(graphemesEmoji(v).length!==1) return refus;
+  if(!/\p{Extended_Pictographic}/u.test(v)) return refus;
+  if(!/^[\p{Extended_Pictographic}\p{Emoji_Component}\u200D\uFE0F]+$/u.test(v)) return refus;
+  if(/[0-9#*]/.test(v)) return refus;
+  return {ok:true,emoji:v};
+}
+// ══ FIN FONCTIONS PURES EMOJIS (#78) ═════════════════
 let currentEmojiCat=Object.keys(EMOJI_CATS)[0];
 let selectedEmoji='📁';
 let editingCatId=null;
 
 function initEmojiUI(){
-  document.getElementById('emoji-cats').innerHTML=Object.keys(EMOJI_CATS).map(c=>
-    `<button class="emoji-cat-btn${c===currentEmojiCat?' active':''}" onclick="setEmojiCat('${c}')">${c}</button>`
+  const groupes=document.getElementById('emoji-cats');
+  groupes.innerHTML=Object.keys(EMOJI_CATS).map(c=>
+    `<button type="button" class="emoji-cat-btn${c===currentEmojiCat?' active':''}" data-emoji-groupe="${esc(c)}">${esc(c)}</button>`
   ).join('');
+  groupes.querySelectorAll('[data-emoji-groupe]').forEach(b=>b.addEventListener('click',function(e){
+    e.stopPropagation();setEmojiCat(this.dataset.emojiGroupe);
+  }));
   renderEmojiGrid();
 }
 function setEmojiCat(cat){
   currentEmojiCat=cat;
   document.getElementById('emoji-search').value='';
-  document.querySelectorAll('.emoji-cat-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===cat));
+  document.querySelectorAll('.emoji-cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.emojiGroupe===cat));
   renderEmojiGrid();
 }
-function renderEmojiGrid(all=false){
-  const emojis=all?Object.values(EMOJI_CATS).flat():EMOJI_CATS[currentEmojiCat]||[];
-  document.getElementById('emoji-grid').innerHTML=emojis.map(e=>
-    `<button class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="pickEmoji('${e}')">${e}</button>`
+// Sans liste : groupe courant. Avec liste : résultat d'une recherche.
+function renderEmojiGrid(liste){
+  const motsCles=new Map(Object.values(EMOJI_CATS).flat());
+  const emojis=liste||(EMOJI_CATS[currentEmojiCat]||[]).map(x=>x[0]);
+  const grille=document.getElementById('emoji-grid');
+  grille.innerHTML=emojis.map(e=>
+    `<button type="button" class="emoji-opt${e===selectedEmoji?' selected':''}" data-emoji="${esc(e)}" title="${esc(motsCles.get(e)||'')}" aria-label="${esc(e+' '+(motsCles.get(e)||''))}">${esc(e)}</button>`
   ).join('');
+  grille.querySelectorAll('[data-emoji]').forEach(b=>b.addEventListener('click',function(e){
+    e.stopPropagation();pickEmoji(this.dataset.emoji);
+  }));
+  grille.style.display=emojis.length?'':'none';
+  document.getElementById('emoji-aucun').style.display=(liste&&!emojis.length)?'block':'none';
 }
 function filterEmojis(){
-  const q=document.getElementById('emoji-search').value.trim();
-  if(q) renderEmojiGrid(true); else renderEmojiGrid();
+  const q=document.getElementById('emoji-search').value;
+  if(normaliserRechercheEmoji(q)) renderEmojiGrid(filtrerEmojis(EMOJI_CATS,q)); else renderEmojiGrid();
 }
 function pickEmoji(e){
   selectedEmoji=e;
   document.getElementById('modal-emoji-preview').textContent=e;
-  document.querySelectorAll('.emoji-opt').forEach(b=>b.classList.toggle('selected',b.textContent===e));
+  document.querySelectorAll('.emoji-opt').forEach(b=>b.classList.toggle('selected',b.dataset.emoji===e));
+}
+// Champ « Ou colle un emoji » (#78) : un emoji valide est appliqué comme un clic dans la grille ;
+// sinon message sous le champ, et l'emoji choisi ne change pas. Champ vide : message effacé.
+function saisirEmojiLibre(){
+  const champ=document.getElementById('emoji-libre');
+  const r=validerEmojiLibre(champ.value);
+  const vide=!champ.value.trim();
+  afficherErreurEmojiLibre(r.ok||vide?'':r.message);
+  if(r.ok) pickEmoji(r.emoji);
+}
+function afficherErreurEmojiLibre(message){
+  const el=document.getElementById('emoji-libre-erreur');
+  el.textContent=message||'';el.style.display=message?'block':'none';
+  document.getElementById('emoji-libre').setAttribute('aria-invalid',message?'true':'false');
 }
 
 // ── TRANSACTIONS : FONCTIONS PURES (#6) ───────────────
@@ -1150,6 +1329,8 @@ function openCatModal(cat){
   document.getElementById('modal-cat-nom').value=cat?cat.nom:'';
   document.getElementById('modal-emoji-preview').textContent=selectedEmoji;
   document.getElementById('emoji-search').value='';
+  document.getElementById('emoji-libre').value='';
+  afficherErreurEmojiLibre('');
   document.getElementById('modal-cat-mvt').checked=!!(cat&&cat.mouvement_compte);
   majInfoMouvementCompte();
   effacerErreurCat();
