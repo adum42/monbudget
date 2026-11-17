@@ -33,11 +33,11 @@ select qa.cas('Trigger transactions_verifier_categorie : before insert or update
      if (select pg_get_triggerdef(oid) from pg_trigger where tgname='transactions_verifier_categorie')
         is distinct from 'CREATE TRIGGER transactions_verifier_categorie BEFORE INSERT OR UPDATE OF categorie_id, user_id ON public.transactions FOR EACH ROW EXECUTE FUNCTION transactions_verifier_categorie()'
        then raise exception 'trigger absent ou mal défini'; end if; end $x$ $q$);
-select qa.cas('transactions_verifier_comptes (#3) inchangé', 'postgres', null,
+select qa.cas('Trigger transactions_verifier_comptes (#3, réécrit par #86) : before insert or update of compte_id, user_id', 'postgres', null,
   $q$do $x$ begin
      if (select pg_get_triggerdef(oid) from pg_trigger where tgname='transactions_verifier_comptes')
-        is distinct from 'CREATE TRIGGER transactions_verifier_comptes BEFORE INSERT OR UPDATE OF compte_id, compte_dest_id, user_id ON public.transactions FOR EACH ROW EXECUTE FUNCTION transactions_verifier_comptes()'
-       then raise exception 'trigger de #3 modifié'; end if; end $x$ $q$);
+        is distinct from 'CREATE TRIGGER transactions_verifier_comptes BEFORE INSERT OR UPDATE OF compte_id, user_id ON public.transactions FOR EACH ROW EXECUTE FUNCTION transactions_verifier_comptes()'
+       then raise exception 'trigger transactions_verifier_comptes inattendu'; end if; end $x$ $q$);
 
 -- ───────── CA1 : B ne peut pas poser un solde sur un compte de A ─────────
 select qa.cas('CA1 B insère un relevé sur le Livret A de A : refusé', 'authenticated', :B,
@@ -103,12 +103,12 @@ select qa.cas('CA4 saveSoldeEntry : upsert sur une date déjà saisie remplace l
 select qa.cas('CA4 relevé déplacé vers un autre compte de A : accepté', 'authenticated', :A,
   $q$update public.soldes set compte_id='20000000-0000-0000-0000-00000000000a' where compte_id='10000000-0000-0000-0000-00000000000a' and date='2026-11-05'$q$);
 select qa.cas('CA4 saveTx : création avec sa propre catégorie', 'authenticated', :A,
-  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,compte_dest_id,categorie_id,tricount,epingle,note)
-     values ('aaaaaaaa-0000-0000-0000-000000000001','#24 A',4,'sortie','2026-11-04','10000000-0000-0000-0000-00000000000a',null,'c0000000-0000-0000-0000-000000000001','non',true,null)$q$);
+  $q$insert into public.transactions (user_id,description,montant,type,date,compte_id,categorie_id,tricount,epingle,note)
+     values ('aaaaaaaa-0000-0000-0000-000000000001','#24 A',4,'sortie','2026-11-04','10000000-0000-0000-0000-00000000000a','c0000000-0000-0000-0000-000000000001','non',true,null)$q$);
 select qa.cas('CA4 saveTx : modification avec sa propre catégorie', 'authenticated', :A,
   $q$do $x$ declare n int; begin
      update public.transactions set description='#24 A modif', montant=4.5, type='sortie', date='2026-11-04',
-       compte_id='10000000-0000-0000-0000-00000000000a', compte_dest_id=null,
+       compte_id='10000000-0000-0000-0000-00000000000a',
        categorie_id='c0000000-0000-0000-0000-0000000000a8', tricount='non', epingle=true, note=null
      where description='#24 A';
      get diagnostics n = row_count; if n <> 1 then raise exception '% ligne(s)', n; end if; end $x$ $q$);
