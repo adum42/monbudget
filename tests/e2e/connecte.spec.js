@@ -4,7 +4,8 @@
 //   (secrets GitHub en CI). Aucun agent ne les lit ni ne les saisit lui-même.
 //   Sans ces variables (en local, ou PR venant d'un fork), ces tests sont IGNORÉS, pas en échec.
 // - Toute donnée créée commence par « TEST QA e2e » et est supprimée à la fin du test, même en cas
-//   d'échec. Le jeu de données de #21 (libellés « TEST … ») n'est jamais modifié.
+//   d'échec, y compris après sa modification (#120). Le jeu de données de #21 (libellés « TEST … »)
+//   n'est jamais modifié.
 // - Seul TEST est joignable : tout appel vers un autre projet Supabase ou un autre site est bloqué
 //   (fixture « reseau » de outils.js), et le bandeau TEST est contrôlé avant toute saisie.
 const {test,expect}=require('./outils');
@@ -56,26 +57,37 @@ test('connexion de l\'utilisateur de test',async({app})=>{
 });
 
 test.describe('avec des données TEST QA',()=>{
-  let description;
+  let description;          // libellé à la création
+  let descriptionModifiee;  // libellé après l'étape « modifier » (#120)
 
   test.beforeEach(async({},testInfo)=>{
     // Libellé unique : deux exécutions de la CI en même temps ne se gênent pas.
     description=`TEST QA e2e ${process.env.GITHUB_RUN_ID||'local'} ${testInfo.project.name} ${Date.now()}`;
+    // Le libellé modifié reprend le libellé d'origine : il commence lui aussi par « TEST QA e2e »
+    // et reste propre à cette exécution.
+    descriptionModifiee=`${description} modifiée`;
   });
 
   test.afterEach(async({app})=>{
-    // Nettoyage garanti, même si le test a échoué en route. La RLS limite la suppression
-    // aux données de l'utilisateur de test ; le filtre exact protège tout le reste.
-    const reste=await app.evaluate(async d=>{
+    // Nettoyage garanti, même si le test a échoué en route : l'opération peut porter le libellé
+    // d'origine OU le libellé modifié selon l'endroit de l'échec (#120), on supprime donc les deux.
+    // La RLS limite la suppression aux données de l'utilisateur de test ; le filtre exact (eq, un
+    // libellé à la fois) protège tout le reste, dont le jeu de données de #21.
+    const reste=await app.evaluate(async libelles=>{
       if(typeof sb==='undefined'||!currentUser) return null;
-      await sb.from('transactions').delete().eq('description',d);
-      const {count}=await sb.from('transactions').select('id',{count:'exact',head:true}).eq('description',d);
-      return count;
-    },description);
+      let total=0;
+      for(const d of libelles){
+        await sb.from('transactions').delete().eq('description',d);
+        const {count,error}=await sb.from('transactions').select('id',{count:'exact',head:true}).eq('description',d);
+        if(error) throw new Error('comptage des données TEST QA impossible : '+error.message);
+        total+=count;
+      }
+      return total;
+    },[description,descriptionModifiee]);
     if(reste!==null) expect(reste,'transaction TEST QA restée en base').toBe(0);
   });
 
-  test('créer puis supprimer une transaction',async({app})=>{
+  test('créer, modifier puis supprimer une transaction',async({app})=>{
     await seConnecter(app);
 
     await app.getByRole('button',{name:'+ Nouvelle opération'}).click();
@@ -101,13 +113,50 @@ test.describe('avec des données TEST QA',()=>{
     // Elle existe vraiment en base (lecture par le client Supabase de la page).
     expect(await app.evaluate(async d=>(await sb.from('transactions').select('montant,type').eq('description',d)).data,description))
       .toEqual([{montant:1.23,type:'sortie'}]);
+    // Son identifiant sert à relire CETTE ligne après la modification.
+    const id=await app.evaluate(async d=>(await sb.from('transactions').select('id').eq('description',d)).data[0].id,description);
 
+    // ── Modifier (#120) : saveTx en mise à jour (update … eq('id', …)) ──────────
     await ligne.click();
+    await expect(app.locator('#tx-modal')).toHaveClass(/open/);
+    // Mode modification : bouton Supprimer affiché et champs pré-remplis avec l'opération créée.
+    await expect(app.locator('#tx-modal-delete')).toBeVisible();
+    await expect(app.locator('#modal-tx-desc')).toHaveValue(description);
+    // Le focus automatique (100 ms après l'ouverture) est aussi posé en modification : on l'attend
+    // avant toute saisie, sinon il pourrait revenir sur la description au milieu du remplissage.
+    await expect(app.locator('#modal-tx-desc')).toBeFocused();
+    await app.fill('#modal-tx-desc',descriptionModifiee);
+    await app.fill('#modal-tx-amount','4.56');
+    await app.click('#btn-type-in');                       // sortie → entrée
+    await expect(app.locator('#btn-type-in')).toHaveAttribute('aria-pressed','true');
+    await app.fill('#modal-tx-note','TEST QA e2e note');    // champ de plus envoyé par construireLigneTx
+    await app.click('#tx-modal-save');
+
+    // À l'écran : modale fermée, nouveau libellé, montant en entrée (signe + et vert), ancien libellé disparu.
+    await expect(app.locator('#tx-modal')).not.toHaveClass(/open/);
+    const ligneModifiee=app.locator('.tx-item',{hasText:descriptionModifiee});
+    await expect(ligneModifiee).toBeVisible();
+    await expect(ligneModifiee.locator('.tx-amount')).toContainText('+4,56');
+    await expect(ligneModifiee.locator('.tx-amount')).toHaveClass(/green/);
+    await expect(ligneModifiee.locator('.tx-note')).toHaveText('TEST QA e2e note');
+    // hasText cherche une sous-chaîne et le libellé d'origine est contenu dans le libellé modifié :
+    // on cherche donc le texte exact.
+    await expect(app.locator('.tx-item').getByText(description,{exact:true})).toHaveCount(0);
+
+    // En base : une seule ligne parmi les deux libellés de l'exécution, la même (même id), mise à jour.
+    expect(await app.evaluate(async id=>(await sb.from('transactions').select('description,montant,type,note').eq('id',id)).data,id))
+      .toEqual([{description:descriptionModifiee,montant:4.56,type:'entrée',note:'TEST QA e2e note'}]);
+    expect(await app.evaluate(async d=>(await sb.from('transactions').select('id').eq('description',d)).data,description))
+      .toEqual([]);
+
+    // ── Supprimer par l'écran ─────────────────────────────────────────────
+    await ligneModifiee.click();
+    await expect(app.locator('#tx-modal')).toHaveClass(/open/);
     await app.click('#tx-modal-delete');
     await app.getByRole('button',{name:'Confirmer la suppression'}).click();
     await expect(app.locator('#tx-modal')).not.toHaveClass(/open/);
-    await expect(ligne).toHaveCount(0);
-    expect(await app.evaluate(async d=>(await sb.from('transactions').select('id').eq('description',d)).data,description))
+    await expect(ligneModifiee).toHaveCount(0);
+    expect(await app.evaluate(async id=>(await sb.from('transactions').select('id').eq('id',id)).data,id))
       .toEqual([]);
   });
 
