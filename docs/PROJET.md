@@ -1,6 +1,6 @@
 # monbudget — dossier projet
 
-> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 16/11/2026.
+> Base de connaissance du projet, tenue à jour par **Corentin** (coach). Dernière mise à jour : 17/11/2026.
 > Elle décrit l'app **telle qu'elle est réellement** (code et base vérifiés), pas telle qu'on l'imagine.
 
 ## 1. Vision
@@ -19,7 +19,7 @@ Hors périmètre (décision du 29/10/2026) : **import bancaire CSV/OFX**.
 
 | Étape | Fonctionnalité | Maquette | État |
 |---|---|---|---|
-| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6), cartes comptes (#8), soldes recalculés après chaque saisie (#66) et catégorie « Mouvement de compte » en base (#68, en prod le 16/11), carte compte « Depuis le relevé » (#82, 16/11) et retrait des mouvements côté écran (#69, en prod le 16/11, recette manuelle reportée dans #10) livrés ; indicateur « Mouvements de compte » (#70, en prod le 16/11, recette manuelle reportée dans #10) et contrôle d'appartenance des relevés et des catégories en base (#24, migration `202611161500`, en prod le 16/11) livrés ; suppression de `compte_dest_id` (#86, débloqué), retouches de la liste et de la saisie (#71 à #78) et validation de l'étape (#10) à venir |
+| 1 | Multi-comptes : compte sur chaque transaction, solde calculé vs solde banque | `docs/maquettes/1-comptes.html` | en cours : structure (#3), vue des soldes (#5), comptes au 30/09 (#4), modale transaction (#6), cartes comptes (#8), soldes recalculés après chaque saisie (#66) et catégorie « Mouvement de compte » en base (#68, en prod le 16/11), carte compte « Depuis le relevé » (#82, 16/11) et retrait des mouvements côté écran (#69, en prod le 16/11, recette manuelle reportée dans #10) livrés ; indicateur « Mouvements de compte » (#70, en prod le 16/11, recette manuelle reportée dans #10) et contrôle d'appartenance des relevés et des catégories en base (#24, migration `202611161500`, en prod le 16/11) livrés ; fenêtres qui ne se ferment plus au clic extérieur (#71, 16/11), croix ✕ de la recherche (#77, 16/11) et boutons de saisie inactifs pendant le chargement (#58, 17/11) livrés ; suppression de `compte_dest_id` (#86, débloqué), autres retouches de la liste et de la saisie (#72 à #74, #76, #78) et validation de l'étape (#10) à venir |
 | 2 | Pointage et rapprochement bancaire | `docs/maquettes/2-pointage.html` | à faire |
 | 3 | Cagnottes par thème | `docs/maquettes/4-cagnottes.html` | à faire |
 | 4 | Suivi de l'épargne mensuelle | `docs/maquettes/3-epargne.html` | à faire |
@@ -59,7 +59,7 @@ Le chef de projet a commencé sa saisie sur la prod **au 01/11/2026**, avec les 
 | 2 | #69 Retirer les mouvements et exclure des stats la catégorie « Mouvement de compte » | Fabien | **livré le 16/11** (PR #88, sans migration ; mergé **sans recette manuelle** sur la preview, reportée dans #10) |
 | 3 | #70 Indicateur « Mouvements de compte » en tête de la liste des transactions | Fabien | **livré le 16/11** (PR #91, sans migration ; mergé **sans recette manuelle** sur la preview, reportée dans #10) |
 | après #69 | #86 Supprimer `compte_dest_id` (colonne, FK, index, trigger, contrainte) — hors sprint 2 pour l'instant | Sylvie | #69 en prod : **débloqué le 16/11** |
-| en parallèle de #68 | #71 Les fenêtres ne se ferment plus au clic extérieur · #77 croix ✕ de la recherche · #72 filtre par compte et sous-total · #58 modale ouverte avant la fin du chargement · #82 (**livré le 16/11**, PR #85) carte compte : opérations depuis le relevé et solde attendu | Fabien | — |
+| en parallèle de #68 | #71 (**livré le 16/11**, PR #94) les fenêtres ne se ferment plus au clic extérieur · #77 (**livré le 16/11**, PR #95) croix ✕ de la recherche · #72 filtre par compte et sous-total · #58 (**livré le 17/11**, PR #98) modale ouverte avant la fin du chargement · #82 (**livré le 16/11**, PR #85) carte compte : opérations depuis le relevé et solde attendu | Fabien | — |
 | après #69 | #80 mise à jour de `CLAUDE.md` (règle des mouvements), Corentin · #73 bouton unique « Nouvelle opération » et modale colorée · #74 alléger les lignes de la liste · #76 pastille couleur du compte (après #74) | Fabien | #69 |
 | ensuite | #78 emojis des catégories · #54 libellé du graphique des comptes · #56 « € » à 390 px · #24 contrôle d'appartenance (**livré le 16/11**, PR #96, migration `202611161500` sur TEST et PROD) | Fabien / Sylvie | — |
 | fin | #10 Validation de l'étape 1 (mise à jour le 05/11), **inclut la recette manuelle de #69 et de #70** | Quentin | tout le jalon |
@@ -78,7 +78,7 @@ Depuis #8, le chef de projet peut modifier ses comptes depuis l'app (type `coura
 
 | Onglet | Contenu |
 |---|---|
-| Transactions | métriques du mois (hors catégorie « Mouvement de compte », #69), indicateur « Mouvements de compte » en tête de la liste (#70, voir ci-dessous), boutons « + Entrée » et « − Sortie », liste filtrable (type Tous / Entrées / Sorties, catégorie, tri date / montant ↑↓), recherche texte (description + note), « Tout voir » (tous les mois), épingle cliquable, suivi Tricount ; nom du compte sous la description ; les opérations de la catégorie « Mouvement de compte » sont listées comme les autres (badge Entrée / Sortie). Plus aucun bouton, type, filtre ni badge « Mouvement » depuis #69 |
+| Transactions | métriques du mois (hors catégorie « Mouvement de compte », #69), indicateur « Mouvements de compte » en tête de la liste (#70, voir ci-dessous), boutons « + Entrée » et « − Sortie », liste filtrable (type Tous / Entrées / Sorties, catégorie, tri date / montant ↑↓), recherche texte (description + note) avec une croix ✕ pour l'effacer (#77, voir ci-dessous), « Tout voir » (tous les mois), épingle cliquable, suivi Tricount ; nom du compte sous la description ; les opérations de la catégorie « Mouvement de compte » sont listées comme les autres (badge Entrée / Sortie). Plus aucun bouton, type, filtre ni badge « Mouvement » depuis #69 |
 | Comptes | patrimoine total (**somme des soldes calculés**), une carte par compte (#8) : solde calculé lu dans `v_soldes_comptes`, dernier solde banque et sa date, écart, voyant, plafond s'il est renseigné, ligne « Depuis le relevé » (#82, voir ci-dessous) ; boutons ✏️ et « Saisir un solde » (fenêtre des relevés, voir #55 ci-dessous) ; graphique d'évolution (courbes des relevés saisis et « Total patrimoine ») |
 | Catégories | CRUD des catégories avec sélecteur d'emoji ; suppression avec confirmation (#44, voir ci-dessous) ; bouton ✏️ en `data-cat-id` + `addEventListener` (#49) ; case « ⇄ Mouvement de compte » et mention dans la liste (#69) |
 | Statistiques | 3 KPIs (sorties, entrées, taux d'épargne vs mois précédent), barres horizontales par catégorie, évolution 6 mois, top 5 catégories (catégorie « Mouvement de compte » exclue partout, `txPourStats`, #69) |
@@ -97,6 +97,16 @@ Champs : description, montant, date, type (**Entrée / Sortie** depuis #69 ; les
 Actions : enregistrer, dupliquer (date du jour), supprimer avec confirmation en 2 temps.
 Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La description reçoit le focus 100 ms après l'ouverture.
 
+Les 4 fenêtres (transaction, catégorie, compte, solde) **ne se ferment plus au clic à l'extérieur** (#71, livré le 16/11, PR #94) : seulement par « Annuler » (« Fermer » pour les soldes), la croix ✕ ou `Échap`.
+
+### Recherche des transactions (#77)
+
+Croix ✕ à droite du champ de recherche (`#tx-search-clear`, `aria-label` « Effacer la recherche », zone de clic 32 × 32 px), visible seulement quand le champ contient du texte (`majCroixRecherche`, appelée par `renderTransactions`). Un clic (`effacerRecherche`) vide le champ, réaffiche la liste et remet le focus dans le champ, sans toucher aux autres filtres ni à « Tout voir ». Livré le 16/11 (PR #95). Hors périmètre : effacement par `Échap`.
+
+### Chargement des données (#58)
+
+Après la connexion, `onAuthStateChange` affiche l'écran principal puis appelle `chargerDonnees()`, qui encadre `loadAll()` par un compteur `chargementsEnCours` (remis à jour dans un `finally`). Tant qu'un chargement est en cours, les boutons marqués `data-saisie` (« + Entrée d'argent », « − Sortie d'argent », « + Nouveau compte », « + Nouvelle catégorie ») sont inactifs, avec l'infobulle « Chargement des données en cours… », et la touche `N` ne fait rien ; `openTxModal` refuse aussi une création. Ils redeviennent utilisables à la fin, **même si une lecture échoue** (l'erreur s'affiche comme avant). « Saisir un solde » et le clic sur une transaction ne sont pas concernés (cartes et liste absentes avant le chargement). Livré le 17/11 (PR #98).
+
 ### Indicateur « Mouvements de compte » (#70)
 
 - Badge en tête de la carte « Historique » de l'onglet Transactions (`#mvt-compte-indicateur`, sous le titre, avant la recherche), **uniquement** dans cet onglet.
@@ -111,7 +121,7 @@ Raccourcis : `Échap` ferme les modales, `N` ouvre une nouvelle transaction. La 
 - **Bouton « Supprimer » de la fenêtre** (après ✏️) : même confirmation, en 2 temps comme pour une transaction (`askDeleteCat`) ; « Annuler » revient à la fenêtre (`annulerSuppressionCat`).
 - **Erreur de la base** à la suppression : affichée en haut de la fenêtre avec son code (« Suppression impossible : » + `messageErreurSupabase`, zone `#cat-modal-error`), la fenêtre reste ouverte et la catégorie est conservée.
 - **Après suppression** : rechargement des catégories et des transactions ; les transactions de la catégorie apparaissent aussitôt en « Sans catégorie » (FK `on delete set null`).
-- **Fermeture** : toutes les fermetures (✕, Annuler, Échap, clic à l'extérieur) passent par `closeCatModal()`, qui remet `editingCatId` à `null`.
+- **Fermeture** : toutes les fermetures (✕, Annuler, Échap ; plus de fermeture au clic à l'extérieur depuis #71) passent par `closeCatModal()`, qui remet `editingCatId` à `null`.
 - **Erreurs à la création et à la modification** (depuis #69) : `saveCat` et `loadCategories` vérifient `error` ; message avec son code en haut de la fenêtre, bouton désactivé pendant l'envoi.
 
 ### Catégorie « Mouvement de compte » (#69)
@@ -155,13 +165,13 @@ Champs : nom, banque, type (**4 types** avec libellés : Compte courant, Livret 
 - **Saisie invalide** (montant vide ou illisible, date vide) : message en haut de la fenêtre (`#solde-modal-error`), aucune requête envoyée.
 - **Erreur de la base** à l'enregistrement ou à la suppression (ou coupure réseau) : message avec son code (« Relevé non enregistré : » / « Relevé non supprimé : » + `messageErreurSupabase`), la fenêtre reste ouverte et la saisie est conservée ; le relevé n'est pas supprimé. `console.error('[monbudget] saveSoldeEntry|deleteSoldeEntry', …)`. Le message disparaît au succès suivant et à la réouverture.
 - **Croix ✕ de l'historique** (`data-del-solde-id` + `addEventListener`, #49) → `demanderSuppressionSolde(id)` : le pied de la fenêtre affiche « Supprimer le relevé du JJ/MM/AAAA (montant €) ? », **Annuler** (focus) et **Confirmer la suppression** ; la ligne visée est encadrée (classe `a-supprimer`). Une seule confirmation à la fois : la croix d'une autre ligne la remplace. Après une erreur, la confirmation reste proposée.
-- **Fermeture** : ✕, « Fermer », Échap et clic à l'extérieur passent par `closeSoldeModal()`, qui efface le message et la confirmation. Le focus automatique du montant (100 ms après l'ouverture) n'est pas posé si une confirmation a été ouverte entre-temps.
+- **Fermeture** : ✕, « Fermer » et Échap passent par `closeSoldeModal()` (plus de fermeture au clic à l'extérieur depuis #71), qui efface le message et la confirmation. Le focus automatique du montant (100 ms après l'ouverture) n'est pas posé si une confirmation a été ouverte entre-temps.
 
 ### Organisation du code (`index.html`)
 
 | Bloc | Fonctions principales |
 |---|---|
-| Données | `loadAll`, `loadCategories`, `loadTransactions` (jointure `categories(nom,emoji)` ; en cas d'erreur, message dans la liste via `erreurChargementTx`), `loadComptes` (charge aussi `soldes`) |
+| Données | `chargerDonnees` (#58 : encadre `loadAll` et met à jour les boutons de saisie par `majBoutonsSaisie`), `loadAll`, `loadCategories`, `loadTransactions` (jointure `categories(nom,emoji)` ; en cas d'erreur, message dans la liste via `erreurChargementTx`), `loadComptes` (charge aussi `soldes`) |
 | Rendu | `renderAll`, `renderMetrics`, `renderTransactions`, `renderCategories`, `renderComptes`, `renderChartComptes`, `renderStatsKpis`, `renderCharts` |
 | Transactions : fonctions pures (#6) | bloc « FONCTIONS PURES (#6) » : `lireMontant`, `compteParDefaut`, `validerSaisieTx`, `construireLigneTx`, `messageErreurSupabase`, `libelleCompteTx`, constante `MONTANT_MAX`. Sans DOM ni réseau, testées par `tests/front/` |
 | Transactions : modale | `openTxModal` → `ouvrirModaleTx`, `lireSaisieTx`, `saveTx`, `setTxType`, `setTricount`, `dupTx`, `askDeleteTx`, `deleteTxFromModal`, `resetDeleteConfirm`, `afficherErreurTx`, `effacerErreurTx`, `optionsComptes` |
@@ -172,11 +182,12 @@ Champs : nom, banque, type (**4 types** avec libellés : Compte courant, Livret 
 | Soldes banque : fonctions pures (#55) | bloc « DÉBUT / FIN FONCTIONS PURES SOLDES BANQUE (#55) », juste après le bloc #8 : `validerSaisieSolde`, `trouverSolde`, `messageSuppressionSolde` (utilisent `lireMontant`, `MONTANT_MAX` de #6 et `formatDateFr`, `arrondiCentimes` de #8). Sans DOM ni réseau, testées par `tests/front/` |
 | Catégories : fonctions pures (#44) | bloc « DÉBUT / FIN FONCTIONS PURES CATÉGORIES (#44) », juste avant `// ── MODAL CAT` : `trouverCategorie`, `messageSuppressionCategorie`. Sans DOM ni réseau, testées par `tests/front/` |
 | Catégories : fenêtre | `openCatModal`, `saveCat`, `demanderSuppressionCat` (croix ✕), `askDeleteCat`, `annulerSuppressionCat`, `deleteCatFromModal`, `closeCatModal`, `resetCatFooter`, `afficherErreurCat`, `effacerErreurCat` |
-| Navigation | `switchTab`, `changeMonth`, `toggleViewAll` |
+| Chargement : fonctions pures (#58) | bloc « DÉBUT / FIN FONCTIONS PURES CHARGEMENT (#58) », juste après le bloc #70 : `saisieBloquee`, `etatBoutonsSaisie`, `raccourciNouvelleTxPossible` (touche `N`), constante `TITRE_CHARGEMENT`. Sans DOM ni réseau, testées par `tests/front/` |
+| Navigation | `switchTab`, `changeMonth`, `toggleViewAll`, `majCroixRecherche`, `effacerRecherche` (#77) |
 | Environnement | `choisirEnvironnement`, `ENV`, `DOMAINES_PROD` (#20) |
 | Utilitaires | `fmt` (format fr-FR 2 décimales), `esc` (échappement HTML de tout texte saisi : liste des transactions (#43), cartes comptes (#8), liste des catégories, listes déroulantes `#modal-tx-cat` et `#f-cat`, historique des soldes et top 5 (#49) ; plus aucun `onclick` construit avec une donnée saisie, seules les grilles d'émojis gardent un `onclick` sur des valeurs constantes du code), `dateLocaleISO` (date du jour dans le fuseau local, bloc « DATE DU JOUR : FONCTION PURE (#45) » ; ne plus utiliser `toISOString` pour « aujourd'hui »), `txOfMonth` |
 
-État global : `currentUser`, `categories`, `editingCatId` (catégorie ouverte dans la fenêtre, `null` à la fermeture), `transactions`, `comptes`, `soldes`, `soldesComptes` (lignes de `v_soldes_comptes`, #8), `currentMonth` (`AAAA-MM`), `viewAllMonths`.
+État global : `currentUser`, `categories`, `editingCatId` (catégorie ouverte dans la fenêtre, `null` à la fermeture), `transactions`, `comptes`, `soldes`, `soldesComptes` (lignes de `v_soldes_comptes`, #8), `currentMonth` (`AAAA-MM`), `viewAllMonths`, `chargementsEnCours` (chargements en cours, #58).
 
 ### Environnements
 
@@ -246,7 +257,6 @@ Mode d'emploi complet (lancer en local, lire un échec, écrire un test) : `test
 - `messageErreurSupabase` traduit tout `23503` par « un compte choisi est introuvable ou n'est pas à vous », y compris quand c'est la **catégorie** qui est refusée par le trigger `transactions_verifier_categorie` (#24). Constat de Quentin sur #24 ; pas de ticket, petit ticket `[front]` à proposer au chef de projet.
 - Migrations appliquées à la main (automatisation prévue après le sprint 1 : #32).
 - Recherche du sélecteur d'emoji des catégories inopérante : saisir un mot affiche tous les emojis (aucun mot-clé) : #78.
-- Juste après la connexion, l'écran principal s'affiche avant la fin du chargement des données : une modale transaction ouverte dans l'intervalle a des listes de comptes vides (trouvé par #9) : #58.
 
 ## 4. Décisions
 
